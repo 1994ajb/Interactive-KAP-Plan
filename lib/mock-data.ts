@@ -1,7 +1,7 @@
 import {
   Account, ContactKapData, ContactIntelligence, EOSICEntry, Opportunity,
   ManMarking, Signal, HubSpotDeal, DeliveryMetrics, CampaignMetrics,
-  UpcomingMeeting, IntegrationStatus, AccountData,
+  UpcomingMeeting, IntegrationStatus, AccountData, CrossBrandContact,
 } from './types'
 import { computeHealthScore } from './health-score'
 import { computeDealConfidence } from './health-score'
@@ -68,8 +68,32 @@ const INTEL_JOCELYN: ContactIntelligence = {
   upcoming_events: null,
   recent_events: null,
   priorities_assessment: 'Jocelyn is focused on demonstrating social ROI to the wider Unilever B&W leadership. Her immediate priority is Q2 campaign performance proving the TikTok-first strategy. Secondary focus on reducing operational friction between Campfire and the brand team.',
-  enrichment_completeness: 45,
-  last_enriched_at: null,
+  // Web Footprint (from live audit)
+  web_footprint_summary: 'Jocelyn has a significant digital marketing footprint beyond social. She led interactive Dove DOOH campaigns at Victoria Station, has Cannes Lions credits on LoveTheWork, and has been quoted in Digital Signage Today and Marketing Week. She has deep experience in experiential and interactive marketing — not just social. Reference her Dove campaign work when positioning Campfire.',
+  press_mentions: [
+    { publication: 'Marketing Week', date: '2024-09-15', context: 'Quoted on the evolution of interactive OOH campaigns in skincare marketing', url: undefined },
+    { publication: 'Digital Signage Today', date: '2024-06-20', context: 'Featured for Dove interactive DOOH campaign at London Victoria Station' },
+    { publication: 'Campaign', date: '2023-11-10', context: 'Mentioned in profile of Unilever\'s experiential marketing leaders' },
+  ],
+  campaign_credits: [
+    { campaign: 'Dove Interactive DOOH — Victoria Station', brand: 'Dove', year: '2024', agency: 'Mindshare', award: 'Cannes Lions shortlist' },
+    { campaign: 'Simple Skincare Digital Refresh', brand: 'Simple', year: '2023', agency: 'In-house + WPP' },
+    { campaign: 'Dove Real Beauty — Social Extension', brand: 'Dove', year: '2022', agency: 'Ogilvy' },
+  ],
+  web_footprint_last_searched: daysAgo(2),
+  // Strategic Context (from live audit)
+  strategic_context: 'Unilever CEO Fernando Fernandez has publicly declared a social-first pivot, shifting 50% of ad budget to creators. Vaseline is the poster child cited in investor presentations. This validates Campfire\'s value proposition but creates intense scrutiny pressure — if social ROI disappoints, budgets may reverse rapidly. Adweek has published critical analysis questioning whether the social-first strategy is sustainable.',
+  industry_debate: [
+    { topic: 'Unilever social-first pivot viability', position: 'Industry critics question whether shifting 50% to creators is sustainable at scale', source: 'Adweek', date: '2026-02-15' },
+    { topic: 'Creator economy ROI measurement', position: 'Brands struggling to attribute sales to influencer spend', source: 'Marketing Week', date: '2026-01-20' },
+    { topic: 'Fossil-origin ingredient scrutiny', position: 'Greenpeace watch-list creates sustainability narrative risk for petroleum-based brands', source: 'The Drum', date: '2025-11-05' },
+  ],
+  company_strategy_alignment: 'Jocelyn sits at the intersection of Unilever\'s social-first mandate and Vaseline\'s explosive growth. Her success is directly tied to proving social ROI at scale. Campfire\'s role is to be the evidence that the strategy works.',
+  // HubSpot completeness (from live audit)
+  hubspot_record_complete: false,
+  hubspot_missing_fields: ['firstname', 'lastname', 'jobtitle', 'email'],
+  enrichment_completeness: 68,
+  last_enriched_at: daysAgo(2),
   created_at: '', updated_at: '',
 }
 
@@ -142,7 +166,13 @@ const VASELINE_CONTACTS: ContactKapData[] = [
     relationship_level: 'ACCEPTANCE', buyer_type: 'EB',
     campfire_owner: 'Joseph Gradwell', man_marking_owner: 'Joseph Gradwell', priority: 'CRITICAL',
     next_step: 'Man-mark with senior, high-impact touchpoints. Present simplified social operating model. Lead with bold, commercially grounded thinking.',
-    tenure: '20+ years', linkedin_url: null, created_at: '', updated_at: '',
+    tenure: '20+ years', linkedin_url: null,
+    // Title verification (from live audit)
+    kap_title: 'Global Marketing Director',
+    verified_title: 'Global Brand Lead, Simple Face Care & Beauty Academy',
+    title_verified: false,
+    title_discrepancy_flagged: true,
+    created_at: '', updated_at: '',
     last_contacted: daysAgo(12), days_since_contact: 12, is_stale: true,
     intelligence: INTEL_JOCELYN,
   },
@@ -406,6 +436,49 @@ const VASELINE_SIGNALS: Signal[] = [
     source: 'HubSpot', related_contact_id: '7',
     timestamp: daysAgo(1), dismissed: false,
   },
+  // V4 signals from live audit
+  {
+    id: '10', account_id: 'vaseline-uk', type: 'ORG_CHANGE', priority: 'HIGH',
+    title: 'Title discrepancy: Jocelyn Hsieh',
+    detail: 'KAP says "Global Marketing Director" but LinkedIn/Clay returns "Global Brand Lead, Simple Face Care & Beauty Academy". AroundDeal shows "Global Brand Development Director, Dove". Verify correct title and update KAP.',
+    source: 'Clay', related_contact_id: '1',
+    timestamp: daysAgo(0), dismissed: false,
+  },
+  {
+    id: '11', account_id: 'vaseline-uk', type: 'ENGAGEMENT_GAP', priority: 'HIGH',
+    title: 'Incomplete HubSpot record: Jocelyn Hsieh',
+    detail: 'HubSpot record (ID 697957251306) missing: firstname, lastname, jobtitle, email. This is the CRITICAL priority Economic Buyer — update immediately.',
+    source: 'HubSpot', related_contact_id: '1',
+    timestamp: daysAgo(0), dismissed: false,
+  },
+  {
+    id: '12', account_id: 'vaseline-uk', type: 'FINANCE_ALERT', priority: 'HIGH',
+    title: 'Overdue Vaseline UK invoices being chased',
+    detail: 'Slack finance channel shows overdue invoices for Vaseline UK. Do NOT enter a strategic meeting while procurement is chasing payment. Resolve finance issue first or acknowledge it upfront.',
+    source: 'Slack',
+    timestamp: daysAgo(1), dismissed: false,
+  },
+  {
+    id: '13', account_id: 'vaseline-uk', type: 'NEWS', priority: 'HIGH',
+    title: 'Adweek questions Unilever social-first pivot',
+    detail: 'Critical article questioning Fernando Fernandez\'s mandate to shift 50% of ad budget to creators. Vaseline is cited as poster child. This creates both opportunity (validate the mandate) and risk (if strategy fails, budgets reverse).',
+    source: 'Google News',
+    timestamp: daysAgo(4), dismissed: false,
+  },
+  {
+    id: '14', account_id: 'vaseline-uk', type: 'JOB_POSTING', priority: 'MEDIUM',
+    title: 'Unilever posting for Senior Digital Marketing Manager — B&W',
+    detail: 'New role on careers.unilever.com suggests B&W division expanding digital team. May indicate budget allocation toward digital/social. Monitor for team structure changes.',
+    source: 'Web',
+    timestamp: daysAgo(3), dismissed: false,
+  },
+  {
+    id: '15', account_id: 'vaseline-uk', type: 'SENTIMENT_SHIFT', priority: 'MEDIUM',
+    title: 'Positive client feedback captured: ski trip',
+    detail: '"We couldn\'t have done it without you" — client feedback about Olivia from ski trip. Direct evidence of relationship strength. Capture in KAP and reference in QBR.',
+    source: 'Slack',
+    timestamp: daysAgo(6), dismissed: false,
+  },
 ]
 
 const VASELINE_DEALS: HubSpotDeal[] = [
@@ -511,14 +584,43 @@ const VASELINE_UPCOMING_MEETINGS: UpcomingMeeting[] = [
   },
 ]
 
+// Cross-brand Unilever contacts discovered via Gmail
+const VASELINE_CROSS_BRAND: CrossBrandContact[] = [
+  {
+    id: 'cb-1', parent_account_id: 'vaseline-uk',
+    name: 'Seyda Morran', email: 'seyda.morran@unilever.com',
+    brand: 'Wonder Wash', relationship_status: 'active',
+    last_contacted: daysAgo(14),
+    notes: 'Discovered via Gmail thread with Joe. Active conversation about social strategy.',
+    expansion_potential: 'MEDIUM', created_at: '',
+  },
+  {
+    id: 'cb-2', parent_account_id: 'vaseline-uk',
+    name: 'Holly Hetherington', email: 'holly.hetherington@unilever.com',
+    brand: 'DIG', relationship_status: 'active',
+    last_contacted: daysAgo(21),
+    notes: 'Discovered via Gmail. Has been in cc on several threads with Vaseline team.',
+    expansion_potential: 'MEDIUM', created_at: '',
+  },
+  {
+    id: 'cb-3', parent_account_id: 'vaseline-uk',
+    name: 'Asim Ahmed', email: 'asim.ahmed@unilever.com',
+    brand: 'Home Care', relationship_status: 'lost',
+    last_contacted: daysAgo(60),
+    notes: 'Previous contact via Gmail. Conversation went cold. Home Care division has separate agency.',
+    expansion_potential: 'LOW', created_at: '',
+  },
+]
+
 const INTEGRATION_STATUS: IntegrationStatus = {
   hubspot: false, // Will be true when HUBSPOT_ACCESS_TOKEN is set
   gmail: false,
   calendar: false,
   slack: false,
   clay: false,
-  asana: false,
   supermetrics: false,
+  meta_ad_library: false,
+  google_news: false,
 }
 
 export function getMockAccountData(): AccountData {
@@ -554,5 +656,6 @@ export function getMockAccountData(): AccountData {
     campaignMetrics: [], // No Supermetrics data yet
     upcomingMeetings: VASELINE_UPCOMING_MEETINGS,
     integrationStatus: INTEGRATION_STATUS,
+    crossBrandContacts: VASELINE_CROSS_BRAND,
   }
 }

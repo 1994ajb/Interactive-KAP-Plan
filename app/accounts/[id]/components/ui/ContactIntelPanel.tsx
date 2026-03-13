@@ -82,6 +82,25 @@ export default function ContactIntelPanel({ contact, signals }: ContactIntelPane
       case 'profile':
         return (
           <div className="space-y-4">
+            {contact.title_discrepancy_flagged && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                <span className="text-amber-500 text-sm mt-0.5">&#9888;</span>
+                <div className="text-sm text-amber-800">
+                  <p className="font-medium">Title Discrepancy Detected</p>
+                  <p className="mt-0.5">KAP: &quot;{contact.kap_title}&quot;</p>
+                  <p>Verified: &quot;{contact.verified_title}&quot;</p>
+                </div>
+              </div>
+            )}
+            {contact.intelligence?.hubspot_record_complete === false && contact.intelligence?.hubspot_missing_fields?.length && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+                <span className="text-red-500 text-sm mt-0.5">&#9888;</span>
+                <div className="text-sm text-red-800">
+                  <p className="font-medium">Incomplete HubSpot Record</p>
+                  <p className="mt-0.5">Missing: {contact.intelligence.hubspot_missing_fields.join(', ')}</p>
+                </div>
+              </div>
+            )}
             <div>
               <p className="text-xl font-semibold">{contact.name}</p>
               <p className="text-secondary">{contact.role}</p>
@@ -648,6 +667,155 @@ export default function ContactIntelPanel({ contact, signals }: ContactIntelPane
             </button>
           </div>
         )
+
+      case 'web-footprint': {
+        const intel = contact.intelligence
+        if (
+          !intel?.web_footprint_summary &&
+          (!intel?.press_mentions || intel.press_mentions.length === 0) &&
+          (!intel?.campaign_credits || intel.campaign_credits.length === 0)
+        ) {
+          return (
+            <NoDataPlaceholder
+              message="No web footprint data available"
+              subtext="Run a web search to discover press mentions, campaign credits, and industry presence"
+              action={
+                <button
+                  disabled
+                  className="bg-accent text-white rounded-lg px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Search Web
+                </button>
+              }
+            />
+          )
+        }
+
+        return (
+          <div className="space-y-4">
+            {intel?.web_footprint_summary && (
+              <p className="text-sm leading-relaxed">{intel.web_footprint_summary}</p>
+            )}
+            {intel?.press_mentions && intel.press_mentions.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
+                  Press Mentions
+                </p>
+                <div className="space-y-2">
+                  {intel.press_mentions.map((mention, i) => (
+                    <div key={i} className="bg-page rounded-lg p-3 text-sm">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-accent">{mention.publication}</span>
+                        <span className="text-text-dim text-xs">{new Date(mention.date).toLocaleDateString()}</span>
+                      </div>
+                      <p className="text-text-secondary">{mention.context}</p>
+                      {mention.url && (
+                        <a href={mention.url} target="_blank" rel="noopener noreferrer" className="text-accent text-xs hover:underline mt-1 inline-block">
+                          View source →
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {intel?.campaign_credits && intel.campaign_credits.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
+                  Campaign Credits
+                </p>
+                <div className="space-y-2">
+                  {intel.campaign_credits.map((credit, i) => (
+                    <div key={i} className="flex items-start gap-3 text-sm bg-page rounded-lg p-3">
+                      <div className="flex-1">
+                        <p className="font-medium">{credit.campaign}</p>
+                        <p className="text-text-secondary text-xs mt-0.5">
+                          {credit.brand} · {credit.year}
+                          {credit.agency && ` · ${credit.agency}`}
+                        </p>
+                      </div>
+                      {credit.award && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-warning-soft text-warning font-medium">
+                          {credit.award}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {intel?.web_footprint_last_searched && (
+              <p className="text-xs text-text-dim">
+                Last searched: {relativeTime(intel.web_footprint_last_searched)}
+              </p>
+            )}
+          </div>
+        )
+      }
+
+      case 'strategic-context': {
+        const intel = contact.intelligence
+        if (
+          !intel?.strategic_context &&
+          (!intel?.industry_debate || intel.industry_debate.length === 0) &&
+          !intel?.company_strategy_alignment
+        ) {
+          return (
+            <NoDataPlaceholder
+              message="No strategic context data available"
+              subtext="Run web search and news monitoring to build strategic context for this contact"
+              action={
+                <button
+                  disabled
+                  className="bg-accent text-white rounded-lg px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Analyse Context
+                </button>
+              }
+            />
+          )
+        }
+
+        return (
+          <div className="space-y-4">
+            {intel?.strategic_context && (
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
+                  Strategic Environment
+                </p>
+                <p className="text-sm leading-relaxed">{intel.strategic_context}</p>
+              </div>
+            )}
+            {intel?.company_strategy_alignment && (
+              <div className="bg-accent-soft rounded-lg p-3">
+                <p className="text-xs font-medium text-accent uppercase tracking-wide mb-1">
+                  Role–Strategy Alignment
+                </p>
+                <p className="text-sm leading-relaxed">{intel.company_strategy_alignment}</p>
+              </div>
+            )}
+            {intel?.industry_debate && intel.industry_debate.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
+                  Industry Debate & Context
+                </p>
+                <div className="space-y-2">
+                  {intel.industry_debate.map((debate, i) => (
+                    <div key={i} className="bg-page rounded-lg p-3 text-sm">
+                      <p className="font-medium">{debate.topic}</p>
+                      <p className="text-text-secondary mt-1">{debate.position}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-xs text-text-dim">{debate.source}</span>
+                        <span className="text-xs text-text-dim">{new Date(debate.date).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      }
 
       default:
         return null

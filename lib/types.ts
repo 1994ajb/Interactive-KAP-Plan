@@ -26,7 +26,7 @@ export type EOSICArea = 'POLITICAL' | 'ECONOMIC' | 'SOCIOLOGICAL' | 'TECHNOLOGIC
 
 export type InteractionSentiment = 'POSITIVE' | 'NEUTRAL' | 'NEGATIVE' | 'UNKNOWN'
 
-export type IntegrationSource = 'HubSpot' | 'Clay' | 'Gmail' | 'Google Calendar' | 'Slack' | 'Asana' | 'Supermetrics' | 'Web' | 'Manual'
+export type IntegrationSource = 'HubSpot' | 'Clay' | 'Gmail' | 'Google Calendar' | 'Slack' | 'Supermetrics' | 'Web' | 'Meta Ad Library' | 'Google News' | 'Companies House' | 'Manual'
 
 export interface Account {
   id: string
@@ -73,6 +73,11 @@ export interface ContactKapData {
   staleness_threshold_days?: number | null
   reports_to?: string | null
   direct_reports?: string[] | null
+  // Title verification
+  kap_title?: string | null
+  verified_title?: string | null
+  title_verified?: boolean
+  title_discrepancy_flagged?: boolean
   created_at: string
   updated_at: string
   // Enriched from HubSpot
@@ -116,6 +121,18 @@ export interface ContactIntelligence {
   recent_events?: ContactEvent[] | null
   // Priorities layer
   priorities_assessment?: string | null
+  // Web Footprint & Press History layer (Layer 11)
+  web_footprint_summary?: string | null
+  press_mentions?: PressMention[] | null
+  campaign_credits?: CampaignCredit[] | null
+  web_footprint_last_searched?: string | null
+  // Strategic Context & Industry Position layer (Layer 12)
+  strategic_context?: string | null
+  industry_debate?: IndustryDebate[] | null
+  company_strategy_alignment?: string | null
+  // HubSpot record completeness
+  hubspot_record_complete?: boolean
+  hubspot_missing_fields?: string[] | null
   // Enrichment tracking
   enrichment_completeness?: number | null
   last_enriched_at: string | null
@@ -128,6 +145,41 @@ export interface ContactEvent {
   date: string
   type: 'conference' | 'webinar' | 'internal' | 'industry'
   relevance?: string
+}
+
+export interface PressMention {
+  publication: string
+  date: string
+  context: string
+  url?: string
+}
+
+export interface CampaignCredit {
+  campaign: string
+  brand: string
+  year: string
+  agency?: string
+  award?: string
+}
+
+export interface IndustryDebate {
+  topic: string
+  position: string
+  source: string
+  date: string
+}
+
+export interface CrossBrandContact {
+  id: string
+  parent_account_id: string
+  name: string
+  email?: string | null
+  brand: string
+  relationship_status: 'active' | 'dormant' | 'lost'
+  last_contacted?: string | null
+  notes?: string | null
+  expansion_potential: 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE'
+  created_at: string
 }
 
 export interface LinkedInPost {
@@ -271,8 +323,9 @@ export interface IntegrationStatus {
   calendar: boolean
   slack: boolean
   clay: boolean
-  asana: boolean
   supermetrics: boolean
+  meta_ad_library: boolean
+  google_news: boolean
 }
 
 export interface AccountData {
@@ -288,4 +341,5 @@ export interface AccountData {
   campaignMetrics: CampaignMetrics[]
   upcomingMeetings: UpcomingMeeting[]
   integrationStatus: IntegrationStatus
+  crossBrandContacts: CrossBrandContact[]
 }

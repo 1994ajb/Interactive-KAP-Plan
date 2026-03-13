@@ -1,4 +1,4 @@
--- KAP Intelligence Terminal — Database Schema v3
+-- KAP Intelligence Terminal — Database Schema v4
 -- Run this in your Supabase SQL editor to set up the database
 
 -- 1. Accounts
@@ -42,11 +42,16 @@ CREATE TABLE IF NOT EXISTS contact_kap_data (
   staleness_threshold_days INTEGER,
   reports_to TEXT,
   direct_reports TEXT[],
+  -- Title verification
+  kap_title TEXT,
+  verified_title TEXT,
+  title_verified BOOLEAN DEFAULT false,
+  title_discrepancy_flagged BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 3. Contact intelligence cache (from Clay + Gmail + Calendar + AI)
+-- 3. Contact intelligence cache (from Clay + Gmail + Calendar + AI + Web)
 CREATE TABLE IF NOT EXISTS contact_intelligence (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   contact_kap_id UUID REFERENCES contact_kap_data(id),
@@ -60,10 +65,10 @@ CREATE TABLE IF NOT EXISTS contact_intelligence (
   press_quotes TEXT[],
   awards TEXT[],
   -- Interactions layer
-  interaction_summary TEXT, -- AI-generated from Gmail + HubSpot
+  interaction_summary TEXT,
   interaction_sentiment TEXT CHECK (interaction_sentiment IN ('POSITIVE', 'NEUTRAL', 'NEGATIVE', 'UNKNOWN')),
-  meeting_frequency_days NUMERIC, -- avg days between meetings from Calendar
-  invite_acceptance_rate NUMERIC, -- % of calendar invites accepted
+  meeting_frequency_days NUMERIC,
+  invite_acceptance_rate NUMERIC,
   -- Network layer
   meeting_coattendees TEXT[],
   email_cc_patterns TEXT[],
@@ -76,9 +81,21 @@ CREATE TABLE IF NOT EXISTS contact_intelligence (
   recommended_approach TEXT,
   -- Events layer
   upcoming_events JSONB, -- [{name, date, type, relevance}]
-  recent_events JSONB, -- [{name, date, type, relevance}]
+  recent_events JSONB,
   -- Priorities layer
   priorities_assessment TEXT,
+  -- Layer 11: Web Footprint & Press History
+  web_footprint_summary TEXT,
+  press_mentions JSONB, -- [{publication, date, context, url}]
+  campaign_credits JSONB, -- [{campaign, brand, year, agency, award}]
+  web_footprint_last_searched TIMESTAMPTZ,
+  -- Layer 12: Strategic Context & Industry Position
+  strategic_context TEXT,
+  industry_debate JSONB, -- [{topic, position, source, date}]
+  company_strategy_alignment TEXT,
+  -- HubSpot record completeness
+  hubspot_record_complete BOOLEAN DEFAULT false,
+  hubspot_missing_fields TEXT[],
   -- Enrichment tracking
   enrichment_completeness NUMERIC,
   last_enriched_at TIMESTAMPTZ,
@@ -118,7 +135,7 @@ CREATE TABLE IF NOT EXISTS man_marking (
   role_description TEXT,
   marking_contacts TEXT[],
   action_plan TEXT,
-  this_week_recommendation TEXT, -- AI-generated weekly
+  this_week_recommendation TEXT,
   recommendation_generated_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -127,7 +144,11 @@ CREATE TABLE IF NOT EXISTS man_marking (
 CREATE TABLE IF NOT EXISTS signals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   account_id UUID REFERENCES accounts(id),
-  type TEXT CHECK (type IN ('ENGAGEMENT_GAP', 'PIPELINE_MOVE', 'ORG_CHANGE', 'NEWS', 'LINKEDIN_POST', 'SOCIAL_ACTIVITY', 'COMPETITOR', 'REGULATION', 'DELIVERY_SLIP', 'MEETING_PREP', 'SENTIMENT_SHIFT', 'FINANCE_ALERT', 'NEW_HIRE', 'JOB_POSTING', 'EVENT', 'CAMPAIGN_DETECTED')),
+  type TEXT CHECK (type IN (
+    'ENGAGEMENT_GAP', 'PIPELINE_MOVE', 'ORG_CHANGE', 'NEWS', 'LINKEDIN_POST',
+    'SOCIAL_ACTIVITY', 'COMPETITOR', 'REGULATION', 'DELIVERY_SLIP', 'MEETING_PREP',
+    'SENTIMENT_SHIFT', 'FINANCE_ALERT', 'NEW_HIRE', 'JOB_POSTING', 'EVENT', 'CAMPAIGN_DETECTED'
+  )),
   priority TEXT CHECK (priority IN ('HIGH', 'MEDIUM', 'LOW')),
   title TEXT NOT NULL,
   detail TEXT,
@@ -140,7 +161,7 @@ CREATE TABLE IF NOT EXISTS signals (
   dismissed_at TIMESTAMPTZ
 );
 
--- 8. Delivery tracking (from Asana)
+-- 8. Delivery tracking (from task tracking tools)
 CREATE TABLE IF NOT EXISTS delivery_metrics (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   account_id UUID REFERENCES accounts(id),
@@ -149,7 +170,7 @@ CREATE TABLE IF NOT EXISTS delivery_metrics (
   tasks_due INTEGER,
   tasks_completed_on_time INTEGER,
   tasks_overdue INTEGER,
-  delivery_velocity NUMERIC, -- % on-time
+  delivery_velocity NUMERIC,
   captured_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -159,7 +180,7 @@ CREATE TABLE IF NOT EXISTS campaign_metrics (
   account_id UUID REFERENCES accounts(id),
   period_start DATE,
   period_end DATE,
-  platform TEXT, -- TikTok, Instagram, etc.
+  platform TEXT,
   reach BIGINT,
   impressions BIGINT,
   engagement_rate NUMERIC,
@@ -181,6 +202,20 @@ CREATE TABLE IF NOT EXISTS connected_team_members (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- 11. Cross-brand contacts (expansion opportunities beyond primary account)
+CREATE TABLE IF NOT EXISTS cross_brand_contacts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  parent_account_id UUID REFERENCES accounts(id),
+  name TEXT NOT NULL,
+  email TEXT,
+  brand TEXT,
+  relationship_status TEXT CHECK (relationship_status IN ('active', 'dormant', 'lost')),
+  last_contacted TIMESTAMPTZ,
+  notes TEXT,
+  expansion_potential TEXT CHECK (expansion_potential IN ('HIGH', 'MEDIUM', 'LOW', 'NONE')),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_contacts_account ON contact_kap_data(account_id);
 CREATE INDEX IF NOT EXISTS idx_contact_intel ON contact_intelligence(contact_kap_id);
@@ -193,3 +228,5 @@ CREATE INDEX IF NOT EXISTS idx_signals_contact ON signals(related_contact_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_account ON delivery_metrics(account_id);
 CREATE INDEX IF NOT EXISTS idx_campaign_account ON campaign_metrics(account_id);
 CREATE INDEX IF NOT EXISTS idx_team_members_account ON connected_team_members(account_id);
+CREATE INDEX IF NOT EXISTS idx_cross_brand_account ON cross_brand_contacts(parent_account_id);
+CREATE INDEX IF NOT EXISTS idx_contact_title_discrepancy ON contact_kap_data(title_discrepancy_flagged) WHERE title_discrepancy_flagged = true;

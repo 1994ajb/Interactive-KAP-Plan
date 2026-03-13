@@ -1,7 +1,6 @@
 import type {
   ContactKapData,
   HubSpotDeal,
-  DeliveryMetrics,
   Signal,
   Priority,
   SignalType,
@@ -124,27 +123,53 @@ export function generatePipelineMoveSignals(deals: HubSpotDeal[]): Signal[] {
 }
 
 /**
- * Alert if delivery velocity drops below 80% for any metrics period.
+ * Generate signals for title discrepancies between KAP and verified sources.
  */
-export function generateDeliverySlipSignals(metrics: DeliveryMetrics[]): Signal[] {
-  const VELOCITY_THRESHOLD = 80
+export function generateTitleDiscrepancySignals(contacts: ContactKapData[]): Signal[] {
   const signals: Signal[] = []
 
-  for (const metric of metrics) {
-    if (metric.delivery_velocity < VELOCITY_THRESHOLD) {
-      const severity = metric.delivery_velocity < 50 ? 'CRITICAL' : 'HIGH'
-
+  for (const contact of contacts) {
+    if (contact.title_discrepancy_flagged && contact.kap_title && contact.verified_title) {
       signals.push(
         makeSignal({
-          account_id: metric.account_id,
-          type: 'DELIVERY_SLIP' as SignalType,
-          priority: severity as Priority,
-          title: `Delivery velocity at ${metric.delivery_velocity}% (below ${VELOCITY_THRESHOLD}%)`,
-          detail: `Period: ${metric.period_start} to ${metric.period_end}. ` +
-            `Tasks due: ${metric.tasks_due}, Completed on time: ${metric.tasks_completed_on_time}, ` +
-            `Overdue: ${metric.tasks_overdue}. ` +
-            `Velocity has dropped to ${metric.delivery_velocity}% — investigate project blockers.`,
-          source: 'Asana',
+          account_id: contact.account_id,
+          type: 'ORG_CHANGE' as SignalType,
+          priority: (contact.priority === 'CRITICAL' || contact.priority === 'HIGH') ? 'HIGH' : 'MEDIUM' as Priority,
+          title: `Title discrepancy detected for ${contact.name}`,
+          detail: `KAP title: "${contact.kap_title}" vs verified title: "${contact.verified_title}". ` +
+            `Review and update the KAP record. This may indicate a role change or incorrect data entry.`,
+          source: 'Clay',
+          related_contact_id: contact.id,
+        })
+      )
+    }
+  }
+
+  return signals
+}
+
+/**
+ * Generate signals for incomplete HubSpot records on priority contacts.
+ */
+export function generateHubSpotCompletenessSignals(contacts: ContactKapData[]): Signal[] {
+  const signals: Signal[] = []
+
+  for (const contact of contacts) {
+    if (
+      (contact.priority === 'CRITICAL' || contact.priority === 'HIGH') &&
+      contact.intelligence?.hubspot_record_complete === false &&
+      contact.intelligence?.hubspot_missing_fields?.length
+    ) {
+      signals.push(
+        makeSignal({
+          account_id: contact.account_id,
+          type: 'ENGAGEMENT_GAP' as SignalType,
+          priority: 'HIGH' as Priority,
+          title: `Incomplete HubSpot record for ${contact.name}`,
+          detail: `Missing fields: ${contact.intelligence.hubspot_missing_fields.join(', ')}. ` +
+            `This is a ${contact.priority} priority contact — update their HubSpot record immediately.`,
+          source: 'HubSpot',
+          related_contact_id: contact.id,
         })
       )
     }

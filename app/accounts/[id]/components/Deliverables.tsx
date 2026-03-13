@@ -47,7 +47,7 @@ export default function Deliverables({
 }: DeliverablesProps) {
   const [activePlatform, setActivePlatform] = useState<string | null>(null)
 
-  const hasDeliveryData = deliveryMetrics.length > 0 || integrationStatus.asana
+  const hasDeliveryData = deliveryMetrics.length > 0
   const hasCampaignData = campaignMetrics.length > 0
 
   // Use real data if available, otherwise use mock data for demo
@@ -74,23 +74,17 @@ export default function Deliverables({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Delivery Tracker (Asana) */}
-      {!hasDeliveryData && !integrationStatus.asana ? (
+      {/* Delivery Tracker */}
+      {!hasDeliveryData ? (
         <div className="bg-white rounded-xl border border-border p-8 text-center">
           <div className="text-4xl mb-3">📋</div>
           <h3 className="text-lg font-semibold text-text-primary mb-2">
-            Asana Not Connected
+            No Delivery Data
           </h3>
           <p className="text-sm text-text-secondary mb-4 max-w-md mx-auto">
-            Connect Asana to track deliverable status, task completion rates, and
-            deadline adherence.
+            Delivery metrics will appear here once task tracking data is connected
+            via n8n automation workflows.
           </p>
-          <button
-            disabled
-            className="bg-accent text-white rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Connect Asana
-          </button>
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-border p-6">
@@ -99,7 +93,7 @@ export default function Deliverables({
               Delivery Tracker
             </h3>
             <span className="text-xs bg-page text-text-secondary rounded-full px-2 py-0.5">
-              Source: Asana
+              Source: Task Tracking
             </span>
           </div>
 

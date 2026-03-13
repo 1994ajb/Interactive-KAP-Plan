@@ -25,8 +25,9 @@ const INTEGRATIONS: { key: keyof IntegrationStatus; label: string }[] = [
   { key: 'gmail', label: 'Gmail' },
   { key: 'calendar', label: 'Calendar' },
   { key: 'clay', label: 'Clay' },
-  { key: 'asana', label: 'Asana' },
   { key: 'slack', label: 'Slack' },
+  { key: 'meta_ad_library', label: 'Meta Ads' },
+  { key: 'google_news', label: 'News' },
 ]
 
 export default function Header({ accountName, tier, healthScore, integrationStatus }: HeaderProps) {

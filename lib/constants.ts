@@ -138,16 +138,18 @@ export const TABS = [
 export type TabId = typeof TABS[number]['id']
 
 export const INTELLIGENCE_LAYERS = [
-  { id: 'profile', label: 'Profile', icon: '👤' },
-  { id: 'career', label: 'Career History', icon: '📈' },
-  { id: 'voice', label: 'Public Voice', icon: '🎤' },
+  { id: 'profile', label: 'Identity & Role', icon: '👤' },
+  { id: 'career', label: 'Career Trajectory', icon: '📈' },
+  { id: 'voice', label: 'Thought Leadership', icon: '🎤' },
   { id: 'communication', label: 'Communication Style', icon: '🧠' },
-  { id: 'interactions', label: 'Recent Interactions', icon: '💬' },
-  { id: 'network', label: 'Network', icon: '🕸' },
-  { id: 'events', label: 'Events', icon: '📅' },
+  { id: 'interactions', label: 'Engagement History', icon: '💬' },
+  { id: 'network', label: 'Network & Influence', icon: '🕸' },
+  { id: 'events', label: 'Events & Activity', icon: '📅' },
   { id: 'priorities', label: 'Priorities', icon: '🎯' },
-  { id: 'signals', label: 'Signals', icon: '📡' },
-  { id: 'next-step', label: 'Next Step', icon: '✅' },
+  { id: 'signals', label: 'Signals & Change', icon: '📡' },
+  { id: 'next-step', label: 'AI Next Step', icon: '✅' },
+  { id: 'web-footprint', label: 'Web & Press', icon: '🌐' },
+  { id: 'strategic-context', label: 'Strategic Context', icon: '🏢' },
 ] as const
 
 export type IntelligenceLayerId = typeof INTELLIGENCE_LAYERS[number]['id']
