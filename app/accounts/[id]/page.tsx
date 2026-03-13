@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { getMockAccountData } from '@/lib/mock-data'
+import { useState, useEffect, useCallback } from 'react'
+import { AccountData } from '@/lib/types'
 import { TabId } from '@/lib/constants'
 import Header from './components/Header'
 import TabNav from './components/TabNav'
@@ -13,9 +13,84 @@ import ActionPlan from './components/ActionPlan'
 import Performance from './components/Deliverables'
 import Coach from './components/Coach'
 
-export default function AccountPage() {
+type LoadState = 'loading' | 'loaded' | 'error'
+
+export default function AccountPage({ params }: { params: { id: string } }) {
   const [activeTab, setActiveTab] = useState<TabId>('overview')
-  const data = getMockAccountData()
+  const [data, setData] = useState<AccountData | null>(null)
+  const [loadState, setLoadState] = useState<LoadState>('loading')
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const fetchData = useCallback(async () => {
+    setLoadState('loading')
+    setErrorMessage(null)
+
+    try {
+      const res = await fetch(`/api/account/${params.id}`)
+      if (!res.ok) {
+        throw new Error(`Failed to load account data (${res.status})`)
+      }
+      const json = await res.json()
+      setData(json)
+      setLoadState('loaded')
+    } catch (err) {
+      console.error('[AccountPage] Fetch error:', err)
+      setErrorMessage(
+        err instanceof Error ? err.message : 'Connection error — retry'
+      )
+      setLoadState('error')
+    }
+  }, [params.id])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  // Loading state
+  if (loadState === 'loading') {
+    return (
+      <div className="min-h-screen bg-page flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-flex items-center gap-3 bg-white rounded-xl border border-border px-8 py-6 shadow-sm">
+            <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+            <div>
+              <p className="text-lg font-semibold text-text-primary">
+                Loading Account Intelligence
+              </p>
+              <p className="text-sm text-text-secondary mt-1">
+                Connecting to data sources...
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (loadState === 'error' || !data) {
+    return (
+      <div className="min-h-screen bg-page flex items-center justify-center">
+        <div className="text-center">
+          <div className="bg-white rounded-xl border border-border px-8 py-8 shadow-sm max-w-md">
+            <div className="text-4xl mb-4">&#9888;&#65039;</div>
+            <h2 className="text-lg font-semibold text-text-primary mb-2">
+              Connection Error
+            </h2>
+            <p className="text-sm text-text-secondary mb-6">
+              {errorMessage || 'Unable to load account data. Check your connection and try again.'}
+            </p>
+            <button
+              onClick={fetchData}
+              className="bg-accent text-white rounded-lg px-6 py-2.5 text-sm font-medium hover:bg-accent/90 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-page">
