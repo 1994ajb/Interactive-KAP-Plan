@@ -19,7 +19,15 @@ export default function ActionPlan({ account, manMarking }: ActionPlanProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column - 3 Whys */}
         <div className="space-y-4">
-          <h2 className="font-semibold text-text-primary">The 3 Whys</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-text-primary">The 3 Whys</h2>
+            <div className="flex items-center gap-2">
+              <span className={`inline-block h-2 w-2 rounded-full ${account.why_validated_by_client ? 'bg-success' : 'bg-warning'}`} />
+              <span className="text-xs text-text-secondary">
+                {account.why_validated_by_client ? 'Validated by client' : 'Not yet validated by client'}
+              </span>
+            </div>
+          </div>
 
           <div className="border-l-4 border-danger bg-danger-soft rounded-xl p-4">
             <h3 className="font-semibold text-danger">Why Change</h3>
@@ -98,6 +106,17 @@ export default function ActionPlan({ account, manMarking }: ActionPlanProps) {
                 <p className="text-sm text-text-secondary italic">
                   {member.action_plan}
                 </p>
+
+                {member.this_week_recommendation ? (
+                  <div className="mt-3 bg-accent-soft border-l-4 border-accent rounded-lg p-3">
+                    <p className="text-xs font-semibold text-accent mb-1">This Week</p>
+                    <p className="text-sm text-text-primary">{member.this_week_recommendation}</p>
+                  </div>
+                ) : (
+                  <div className="mt-3 bg-page rounded-lg p-3">
+                    <p className="text-xs text-text-dim italic">AI recommendation not generated — connect Anthropic API</p>
+                  </div>
+                )}
               </div>
             ))}
           </div>

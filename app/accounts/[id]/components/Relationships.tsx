@@ -1,21 +1,21 @@
 'use client'
 
 import { useState } from 'react'
-import { ContactKapData } from '@/lib/types'
+import { ContactKapData, Signal } from '@/lib/types'
 import { RELATIONSHIP_LEVEL_ORDER, RELATIONSHIP_COLORS } from '@/lib/constants'
 import ContactCard from './ui/ContactCard'
-import Badge from './ui/Badge'
+import ContactIntelPanel from './ui/ContactIntelPanel'
 
 interface RelationshipsProps {
   contacts: ContactKapData[]
+  signals: Signal[]
 }
 
-export default function Relationships({ contacts }: RelationshipsProps) {
+export default function Relationships({ contacts, signals }: RelationshipsProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const selected = contacts.find((c) => c.id === selectedId) ?? null
 
-  // Group contacts by relationship level in descending order
   const grouped = RELATIONSHIP_LEVEL_ORDER.map((level) => ({
     level,
     contacts: contacts.filter((c) => c.relationship_level === level),
@@ -34,6 +34,7 @@ export default function Relationships({ contacts }: RelationshipsProps) {
                 <h3 className="text-lg font-semibold text-text-primary capitalize">
                   {level.charAt(0) + level.slice(1).toLowerCase()}
                 </h3>
+                <span className="text-sm text-text-dim ml-1">({groupContacts.length})</span>
               </div>
               <div className="space-y-3">
                 {groupContacts.map((contact) => (
@@ -49,82 +50,16 @@ export default function Relationships({ contacts }: RelationshipsProps) {
         })}
       </div>
 
-      {/* Detail panel — right 40% */}
+      {/* Intelligence panel — right 40% */}
       <div className="w-[40%]">
-        <div className="sticky top-40">
-          {!selected ? (
-            <div className="bg-white rounded-xl border p-6 text-center text-text-secondary text-sm">
-              Select a contact to view details
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl border p-6 space-y-5">
-              {/* Header */}
-              <div>
-                <h2 className="text-xl font-semibold text-text-primary">{selected.name}</h2>
-                <p className="text-text-secondary text-sm">{selected.role}</p>
-              </div>
-
-              {/* Detail grid */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-text-secondary mb-1">Tenure</p>
-                  <p className="text-text-primary font-medium">{selected.tenure}</p>
-                </div>
-                <div>
-                  <p className="text-text-secondary mb-1">Relationship Level</p>
-                  <Badge
-                    label={selected.relationship_level}
-                    variant={selected.relationship_level === 'CHAMPION' || selected.relationship_level === 'TRUST' ? 'green' : selected.relationship_level === 'ACKNOWLEDGE' ? 'red' : 'amber'}
-                  />
-                </div>
-                <div>
-                  <p className="text-text-secondary mb-1">Buyer Type</p>
-                  <p className="text-text-primary font-medium">{selected.buyer_type}</p>
-                </div>
-                <div>
-                  <p className="text-text-secondary mb-1">Campfire Owner</p>
-                  <p className="text-text-primary font-medium">{selected.campfire_owner}</p>
-                </div>
-                <div>
-                  <p className="text-text-secondary mb-1">Priority</p>
-                  <Badge label={selected.priority} variant={selected.priority === 'CRITICAL' ? 'red' : selected.priority === 'HIGH' ? 'amber' : 'blue'} />
-                </div>
-                <div>
-                  <p className="text-text-secondary mb-1">Last Contacted</p>
-                  <p className="text-text-primary font-mono text-xs">
-                    {selected.last_contacted ?? '—'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-text-secondary mb-1">Days Since Contact</p>
-                  <p className="text-text-primary font-medium">
-                    {selected.days_since_contact != null ? selected.days_since_contact : '—'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Next Step */}
-              {selected.next_step && (
-                <div className="bg-accent-soft border-l-4 border-accent rounded-lg p-4">
-                  <p className="text-xs font-semibold text-text-secondary mb-1">Next Step</p>
-                  <p className="text-sm text-text-primary">{selected.next_step}</p>
-                </div>
-              )}
-
-              {/* HubSpot link */}
-              {selected.hubspot_contact_id && (
-                <a
-                  href={`https://app-eu1.hubspot.com/contacts/145447962/record/0-1/${selected.hubspot_contact_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:underline"
-                >
-                  View in HubSpot →
-                </a>
-              )}
-            </div>
-          )}
-        </div>
+        {!selected ? (
+          <div className="sticky top-40 bg-white rounded-xl border p-8 text-center">
+            <div className="text-3xl mb-3">👤</div>
+            <p className="text-text-secondary text-sm">Select a contact to view their 7-layer intelligence profile</p>
+          </div>
+        ) : (
+          <ContactIntelPanel contact={selected} signals={signals} />
+        )}
       </div>
     </div>
   )

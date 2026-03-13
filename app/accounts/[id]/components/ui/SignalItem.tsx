@@ -4,9 +4,11 @@ import { SIGNAL_ICONS } from '@/lib/constants'
 interface SignalItemProps {
   type: Signal['type']
   priority: Signal['priority']
-  text: string
+  title: string
+  detail?: string | null
+  source: string
+  source_url?: string | null
   timestamp: string
-  source_url?: string
 }
 
 const priorityDotColor: Record<Priority, string> = {
@@ -16,7 +18,7 @@ const priorityDotColor: Record<Priority, string> = {
   LOW: 'bg-text-dim',
 }
 
-function relativeTime(timestamp: string): string {
+export function relativeTime(timestamp: string): string {
   const now = Date.now()
   const then = new Date(timestamp).getTime()
   const diffMs = now - then
@@ -35,15 +37,23 @@ function relativeTime(timestamp: string): string {
   return `${months}mo ago`
 }
 
-export default function SignalItem({ type, priority, text, timestamp, source_url }: SignalItemProps) {
-  const icon = SIGNAL_ICONS[type]
+export default function SignalItem({ type, priority, title, detail, source, source_url, timestamp }: SignalItemProps) {
+  const icon = SIGNAL_ICONS[type] ?? '📌'
 
   const content = (
     <div className="flex items-start gap-3 py-3 px-4 border-b border-border-light last:border-b-0">
       <span className="text-lg flex-shrink-0 mt-0.5">{icon}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-text-primary leading-snug">{text}</p>
-        <p className="text-xs text-text-dim mt-1">{relativeTime(timestamp)}</p>
+        <p className="text-sm font-medium text-text-primary leading-snug">{title}</p>
+        {detail && (
+          <p className="text-xs text-text-secondary mt-0.5 line-clamp-2">{detail}</p>
+        )}
+        <div className="flex items-center gap-2 mt-1">
+          <span className="text-[10px] bg-page text-text-dim rounded-full px-1.5 py-0.5 font-medium">
+            {source}
+          </span>
+          <span className="text-xs text-text-dim">{relativeTime(timestamp)}</span>
+        </div>
       </div>
       <span
         className={`w-2 h-2 rounded-full flex-shrink-0 mt-2 ${priorityDotColor[priority]}`}

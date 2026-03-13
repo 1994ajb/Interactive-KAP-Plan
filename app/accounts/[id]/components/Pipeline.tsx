@@ -1,10 +1,11 @@
-import { HubSpotDeal } from '@/lib/types'
-import { PIPELINE_STAGES } from '@/lib/constants'
+import { HubSpotDeal, ContactKapData } from '@/lib/types'
+import { PIPELINE_STAGES, STAGE_COLORS } from '@/lib/constants'
 import MetricCard from './ui/MetricCard'
 import DealRow from './ui/DealRow'
 
 interface PipelineProps {
   deals: HubSpotDeal[]
+  contacts: ContactKapData[]
 }
 
 function formatGBP(amount: number): string {
@@ -23,7 +24,13 @@ function formatDate(dateStr: string | null): string {
   })
 }
 
-export default function Pipeline({ deals }: PipelineProps) {
+function confidenceColor(score: number): string {
+  if (score >= 70) return 'text-success'
+  if (score >= 40) return 'text-warning'
+  return 'text-danger'
+}
+
+export default function Pipeline({ deals, contacts }: PipelineProps) {
   const activeDeals = deals
     .filter((d) => d.dealstage !== 'closedwon' && d.dealstage !== 'closedlost')
     .sort((a, b) => {
@@ -40,10 +47,7 @@ export default function Pipeline({ deals }: PipelineProps) {
       return dateB - dateA
     })
 
-  const openPipeline = activeDeals.reduce(
-    (sum, d) => sum + (d.amount ?? 0),
-    0
-  )
+  const openPipeline = activeDeals.reduce((sum, d) => sum + (d.amount ?? 0), 0)
   const closedWonTotal = deals
     .filter((d) => d.dealstage === 'closedwon')
     .reduce((sum, d) => sum + (d.amount ?? 0), 0)
@@ -53,28 +57,60 @@ export default function Pipeline({ deals }: PipelineProps) {
 
   return (
     <div className="bg-white rounded-xl border border-border p-6">
-      {/* Summary Metrics */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <MetricCard label="Open Pipeline" value={formatGBP(openPipeline)} />
         <MetricCard label="Closed Won FY" value={formatGBP(closedWonTotal)} />
         <MetricCard label="Closed Lost FY" value={formatGBP(closedLostTotal)} />
       </div>
 
-      {/* Active Deals */}
+      {/* Active Deals with confidence */}
       <div className="mb-6">
         <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
           Active Deals
         </h3>
         {activeDeals.length > 0 ? (
-          <div>
-            {activeDeals.map((deal) => (
-              <DealRow key={deal.id} {...deal} />
-            ))}
+          <div className="space-y-1">
+            {/* Header row */}
+            <div className="flex items-center px-3 py-2 text-xs text-text-dim font-medium">
+              <div className="flex-1">Deal</div>
+              <div className="w-28 text-center">Stage</div>
+              <div className="w-24 text-center">Close Date</div>
+              <div className="w-20 text-right">Amount</div>
+              <div className="w-20 text-right">Confidence</div>
+            </div>
+            {activeDeals.map((deal) => {
+              const stageColor = STAGE_COLORS[deal.dealstage] ?? 'bg-text-dim'
+              return (
+                <div
+                  key={deal.id}
+                  className="flex items-center px-3 py-2.5 border-b border-border-light last:border-b-0 hover:bg-page transition-colors rounded-lg"
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${stageColor}`} />
+                    <span className="text-sm text-text-primary truncate">{deal.dealname}</span>
+                  </div>
+                  <div className="w-28 text-center">
+                    <span className="text-xs text-text-secondary">{deal.stage_label}</span>
+                  </div>
+                  <div className="w-24 text-center">
+                    <span className="text-xs text-text-secondary font-mono">{formatDate(deal.closedate)}</span>
+                  </div>
+                  <div className="w-20 text-right">
+                    <span className="text-sm font-mono font-semibold text-text-primary">
+                      {deal.amount ? formatGBP(deal.amount) : '—'}
+                    </span>
+                  </div>
+                  <div className="w-20 text-right">
+                    <span className={`text-sm font-mono font-semibold ${confidenceColor(deal.confidence_score ?? 0)}`}>
+                      {deal.confidence_score ?? 0}%
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         ) : (
-          <p className="text-sm text-text-dim py-4 text-center">
-            No active deals
-          </p>
+          <p className="text-sm text-text-dim py-4 text-center">No active deals</p>
         )}
       </div>
 
@@ -102,14 +138,10 @@ export default function Pipeline({ deals }: PipelineProps) {
                     >
                       {isWon ? 'Won' : 'Lost'}
                     </span>
-                    <span className="text-sm text-text-primary truncate">
-                      {deal.dealname}
-                    </span>
+                    <span className="text-sm text-text-primary truncate">{deal.dealname}</span>
                   </div>
                   <div className="flex items-center gap-4 flex-shrink-0 ml-4">
-                    <span className="text-xs text-text-secondary">
-                      {formatDate(deal.closedate)}
-                    </span>
+                    <span className="text-xs text-text-secondary">{formatDate(deal.closedate)}</span>
                     <span className="text-sm font-mono font-semibold text-text-primary">
                       {formatGBP(deal.amount ?? 0)}
                     </span>
@@ -119,9 +151,7 @@ export default function Pipeline({ deals }: PipelineProps) {
             })}
           </div>
         ) : (
-          <p className="text-sm text-text-dim py-4 text-center">
-            No recently closed deals
-          </p>
+          <p className="text-sm text-text-dim py-4 text-center">No recently closed deals</p>
         )}
       </div>
     </div>

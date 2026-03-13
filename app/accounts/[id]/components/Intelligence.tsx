@@ -131,6 +131,15 @@ export default function Intelligence({ eosic, opportunities, account }: Intellig
                           </p>
                         </div>
                       )}
+                      {entry.sources && entry.sources.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {entry.sources.map((src, idx) => (
+                            <span key={idx} className="text-[10px] bg-page text-text-dim rounded-full px-2 py-0.5">
+                              {src}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 

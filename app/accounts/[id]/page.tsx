@@ -10,6 +10,7 @@ import Relationships from './components/Relationships'
 import Pipeline from './components/Pipeline'
 import Intelligence from './components/Intelligence'
 import ActionPlan from './components/ActionPlan'
+import Deliverables from './components/Deliverables'
 import Coach from './components/Coach'
 
 export default function AccountPage() {
@@ -21,14 +22,17 @@ export default function AccountPage() {
       <Header
         accountName={data.account.name}
         tier={data.account.tier}
-        hubspotConnected={false}
+        healthScore={data.healthScore}
+        integrationStatus={data.integrationStatus}
       />
       <TabNav activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab as TabId)} />
 
       <main className="max-w-7xl mx-auto px-6 py-6">
         {activeTab === 'overview' && <Overview data={data} />}
-        {activeTab === 'relationships' && <Relationships contacts={data.contacts} />}
-        {activeTab === 'pipeline' && <Pipeline deals={data.deals} />}
+        {activeTab === 'relationships' && (
+          <Relationships contacts={data.contacts} signals={data.signals} />
+        )}
+        {activeTab === 'pipeline' && <Pipeline deals={data.deals} contacts={data.contacts} />}
         {activeTab === 'intelligence' && (
           <Intelligence
             eosic={data.eosic}
@@ -38,6 +42,13 @@ export default function AccountPage() {
         )}
         {activeTab === 'action-plan' && (
           <ActionPlan account={data.account} manMarking={data.manMarking} />
+        )}
+        {activeTab === 'deliverables' && (
+          <Deliverables
+            deliveryMetrics={data.deliveryMetrics}
+            campaignMetrics={data.campaignMetrics}
+            integrationStatus={data.integrationStatus}
+          />
         )}
         {activeTab === 'coach' && <Coach data={data} />}
       </main>
