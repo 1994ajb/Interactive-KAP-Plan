@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ContactKapData, Signal } from '@/lib/types'
+import { ContactKapData, Signal, ContactEvent } from '@/lib/types'
 import {
   INTELLIGENCE_LAYERS,
   HUBSPOT_BASE_URL,
@@ -322,18 +322,269 @@ export default function ContactIntelPanel({ contact, signals }: ContactIntelPane
         )
       }
 
-      case 'network':
+      case 'communication': {
+        const intel = contact.intelligence
+        if (
+          !intel?.personality_profile &&
+          !intel?.communication_style &&
+          !intel?.decision_pattern &&
+          !intel?.recommended_approach
+        ) {
+          return (
+            <NoDataPlaceholder
+              message="No communication style data available"
+              subtext="Connect Clay enrichment and interaction history to generate personality profile"
+              action={
+                <button
+                  disabled
+                  className="bg-accent text-white rounded-lg px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Generate Profile
+                </button>
+              }
+            />
+          )
+        }
+
         return (
-          <NoDataPlaceholder
-            message="Network mapping requires org chart data from Clay and HubSpot associations."
-            subtext="Connect Clay org chart enrichment to populate"
-            action={contact.role ? (
-              <p className="text-sm text-text-secondary">
-                Role context: {contact.role}
-              </p>
-            ) : undefined}
-          />
+          <div className="space-y-4">
+            {intel?.personality_profile && (
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
+                  Personality Profile
+                </p>
+                <p className="text-sm leading-relaxed">{intel.personality_profile}</p>
+              </div>
+            )}
+            {intel?.communication_style && (
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
+                  Communication Style
+                </p>
+                <p className="text-sm leading-relaxed">{intel.communication_style}</p>
+              </div>
+            )}
+            {intel?.decision_pattern && (
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
+                  Decision Pattern
+                </p>
+                <p className="text-sm leading-relaxed">{intel.decision_pattern}</p>
+              </div>
+            )}
+            {intel?.motivations && intel.motivations.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
+                  Motivations
+                </p>
+                <ul className="list-disc list-inside text-sm space-y-1">
+                  {intel.motivations.map((item, i) => (
+                    <li key={i}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {intel?.frustrations && intel.frustrations.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
+                  Frustrations
+                </p>
+                <ul className="list-disc list-inside text-sm space-y-1 text-danger">
+                  {intel.frustrations.map((item, i) => (
+                    <li key={i}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {intel?.recommended_approach && (
+              <div className="bg-accent-soft rounded-lg p-3">
+                <p className="text-xs font-medium text-accent uppercase tracking-wide mb-1">
+                  Recommended Approach
+                </p>
+                <p className="text-sm leading-relaxed">{intel.recommended_approach}</p>
+              </div>
+            )}
+          </div>
         )
+      }
+
+      case 'network': {
+        const intel = contact.intelligence
+        const hasNetworkData = (intel?.meeting_coattendees && intel.meeting_coattendees.length > 0) ||
+          (intel?.email_cc_patterns && intel.email_cc_patterns.length > 0)
+
+        if (!hasNetworkData) {
+          return (
+            <NoDataPlaceholder
+              message="Network mapping requires org chart data from Clay and HubSpot associations."
+              subtext="Connect Clay org chart enrichment to populate"
+              action={contact.role ? (
+                <p className="text-sm text-text-secondary">
+                  Role context: {contact.role}
+                </p>
+              ) : undefined}
+            />
+          )
+        }
+
+        return (
+          <div className="space-y-4">
+            {contact.reports_to && (
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-1">
+                  Reports To
+                </p>
+                <p className="text-sm font-medium">{contact.reports_to}</p>
+              </div>
+            )}
+            {contact.direct_reports && contact.direct_reports.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
+                  Direct Reports
+                </p>
+                <ul className="list-disc list-inside text-sm space-y-1">
+                  {contact.direct_reports.map((name, i) => (
+                    <li key={i}>{name}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {intel?.meeting_coattendees && intel.meeting_coattendees.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
+                  Frequent Meeting Co-attendees
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {intel.meeting_coattendees.map((name, i) => (
+                    <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-page text-text-secondary">
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {intel?.email_cc_patterns && intel.email_cc_patterns.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
+                  Email CC Patterns
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {intel.email_cc_patterns.map((name, i) => (
+                    <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-page text-text-secondary">
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      }
+
+      case 'events': {
+        const intel = contact.intelligence
+        const hasEvents = (intel?.upcoming_events && intel.upcoming_events.length > 0) ||
+          (intel?.recent_events && intel.recent_events.length > 0) ||
+          (intel?.conference_appearances && intel.conference_appearances.length > 0)
+
+        if (!hasEvents) {
+          return (
+            <NoDataPlaceholder
+              message="No event data available"
+              subtext="Connect calendar and Clay enrichment to track events and conferences"
+            />
+          )
+        }
+
+        const renderEventList = (events: ContactEvent[], label: string) => (
+          <div>
+            <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
+              {label}
+            </p>
+            <div className="space-y-2">
+              {events.map((event, i) => (
+                <div key={i} className="flex items-start gap-3 text-sm bg-page rounded-lg p-3">
+                  <span className="text-xs text-text-dim font-mono mt-0.5">
+                    {new Date(event.date).toLocaleDateString()}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium">{event.name}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-accent-soft text-accent">
+                        {event.type}
+                      </span>
+                      {event.relevance && (
+                        <span className="text-xs text-text-secondary">{event.relevance}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+
+        return (
+          <div className="space-y-4">
+            {intel?.upcoming_events && intel.upcoming_events.length > 0 &&
+              renderEventList(intel.upcoming_events, 'Upcoming Events')}
+            {intel?.recent_events && intel.recent_events.length > 0 &&
+              renderEventList(intel.recent_events, 'Recent Events')}
+            {intel?.conference_appearances && intel.conference_appearances.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">
+                  Conference Appearances
+                </p>
+                <ul className="list-disc list-inside text-sm space-y-1">
+                  {intel.conference_appearances.map((item, i) => (
+                    <li key={i}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )
+      }
+
+      case 'priorities': {
+        const intel = contact.intelligence
+        if (!intel?.priorities_assessment) {
+          return (
+            <NoDataPlaceholder
+              message="No priorities assessment available"
+              subtext="Generate an AI-powered priorities assessment based on interaction history and public data"
+              action={
+                <button
+                  disabled
+                  className="bg-accent text-white rounded-lg px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Generate Assessment
+                </button>
+              }
+            />
+          )
+        }
+
+        return (
+          <div className="space-y-3">
+            <p className="text-sm leading-relaxed whitespace-pre-line">
+              {intel.priorities_assessment}
+            </p>
+            {intel.enrichment_completeness != null && (
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-xs text-text-secondary">Data completeness:</span>
+                <div className="flex-1 h-2 bg-page rounded-full overflow-hidden max-w-[120px]">
+                  <div
+                    className={`h-full rounded-full ${intel.enrichment_completeness >= 70 ? 'bg-success' : intel.enrichment_completeness >= 40 ? 'bg-warning' : 'bg-danger'}`}
+                    style={{ width: `${intel.enrichment_completeness}%` }}
+                  />
+                </div>
+                <span className="text-xs font-mono text-text-dim">{intel.enrichment_completeness}%</span>
+              </div>
+            )}
+          </div>
+        )
+      }
 
       case 'signals':
         if (contactSignals.length === 0) {

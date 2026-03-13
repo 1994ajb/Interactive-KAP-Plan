@@ -6,11 +6,11 @@ import { TabId } from '@/lib/constants'
 import Header from './components/Header'
 import TabNav from './components/TabNav'
 import Overview from './components/Overview'
-import Relationships from './components/Relationships'
+import People from './components/Relationships'
 import Pipeline from './components/Pipeline'
 import Intelligence from './components/Intelligence'
 import ActionPlan from './components/ActionPlan'
-import Deliverables from './components/Deliverables'
+import Performance from './components/Deliverables'
 import Coach from './components/Coach'
 
 export default function AccountPage() {
@@ -29,8 +29,8 @@ export default function AccountPage() {
 
       <main className="max-w-7xl mx-auto px-6 py-6">
         {activeTab === 'overview' && <Overview data={data} />}
-        {activeTab === 'relationships' && (
-          <Relationships contacts={data.contacts} signals={data.signals} />
+        {activeTab === 'people' && (
+          <People contacts={data.contacts} signals={data.signals} />
         )}
         {activeTab === 'pipeline' && <Pipeline deals={data.deals} contacts={data.contacts} />}
         {activeTab === 'intelligence' && (
@@ -43,8 +43,8 @@ export default function AccountPage() {
         {activeTab === 'action-plan' && (
           <ActionPlan account={data.account} manMarking={data.manMarking} />
         )}
-        {activeTab === 'deliverables' && (
-          <Deliverables
+        {activeTab === 'performance' && (
+          <Performance
             deliveryMetrics={data.deliveryMetrics}
             campaignMetrics={data.campaignMetrics}
             integrationStatus={data.integrationStatus}

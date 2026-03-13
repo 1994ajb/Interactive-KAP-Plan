@@ -1,10 +1,9 @@
-import { ContactKapData, HubSpotDeal, HealthScore, DeliveryMetrics } from './types'
+import { ContactKapData, HubSpotDeal, HealthScore } from './types'
 import { BUYER_WEIGHT, PIPELINE_STAGES, ENGAGEMENT_PRIORITY_WEIGHT } from './constants'
 
 export interface HealthScoreInputs {
   contacts: ContactKapData[]
   deals: HubSpotDeal[]
-  deliveryMetrics?: DeliveryMetrics[]
   sentimentOverride?: number | null
   pipelineTarget?: number
 }
@@ -12,32 +11,29 @@ export interface HealthScoreInputs {
 export function computeHealthScore({
   contacts,
   deals,
-  deliveryMetrics = [],
   sentimentOverride = null,
   pipelineTarget = 150000,
 }: HealthScoreInputs): HealthScore {
   const relationshipScore = computeRelationshipScore(contacts)
   const pipelineScore = computePipelineScore(deals, pipelineTarget)
   const engagementScore = computeEngagementScore(contacts)
-  const deliveryScore = computeDeliveryScore(deliveryMetrics)
   const momentumScore = computeMomentumScore(deals, contacts)
   const sentimentScore = sentimentOverride ?? computeSentimentScore(contacts)
 
-  // Updated 6-component formula per v2 spec
+  // V3: 5-component formula (delivery removed as separate component)
   const overall = Math.round(
-    (relationshipScore * 0.25) +
+    (relationshipScore * 0.30) +
     (pipelineScore * 0.20) +
-    (engagementScore * 0.20) +
-    (deliveryScore * 0.15) +
-    (momentumScore * 0.10) +
+    (engagementScore * 0.25) +
+    (momentumScore * 0.15) +
     (sentimentScore * 0.10)
   )
 
   const status = overall >= 70 ? 'Healthy' : overall >= 45 ? 'At Risk' : 'Critical'
 
   const summary = generateSummary(
-    contacts, deals, deliveryMetrics,
-    relationshipScore, pipelineScore, engagementScore, deliveryScore, momentumScore, sentimentScore,
+    contacts, deals,
+    relationshipScore, pipelineScore, engagementScore, momentumScore, sentimentScore,
   )
 
   return {
@@ -45,7 +41,6 @@ export function computeHealthScore({
     relationship_score: Math.round(relationshipScore),
     pipeline_score: Math.round(pipelineScore),
     engagement_score: Math.round(engagementScore),
-    delivery_score: Math.round(deliveryScore),
     momentum_score: Math.round(momentumScore),
     sentiment_score: Math.round(sentimentScore),
     status,
@@ -107,20 +102,6 @@ function computeEngagementScore(contacts: ContactKapData[]): number {
   return totalWeight > 0 ? totalScore / totalWeight : 50
 }
 
-function computeDeliveryScore(deliveryMetrics: DeliveryMetrics[]): number {
-  if (deliveryMetrics.length === 0) return 50 // neutral if no data
-
-  // Use the most recent 4 weeks of data
-  const recent = deliveryMetrics
-    .sort((a, b) => new Date(b.period_end).getTime() - new Date(a.period_end).getTime())
-    .slice(0, 4)
-
-  const totalDue = recent.reduce((sum, d) => sum + d.tasks_due, 0)
-  const totalOnTime = recent.reduce((sum, d) => sum + d.tasks_completed_on_time, 0)
-
-  return totalDue > 0 ? (totalOnTime / totalDue) * 100 : 50
-}
-
 function computeMomentumScore(deals: HubSpotDeal[], contacts: ContactKapData[]): number {
   const now = new Date()
   const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
@@ -144,7 +125,6 @@ function computeMomentumScore(deals: HubSpotDeal[], contacts: ContactKapData[]):
 }
 
 function computeSentimentScore(contacts: ContactKapData[]): number {
-  // Derived from contact intelligence sentiment data
   const priorityContacts = contacts.filter(c => c.priority === 'CRITICAL' || c.priority === 'HIGH')
   if (priorityContacts.length === 0) return 50
 
@@ -159,10 +139,10 @@ function computeSentimentScore(contacts: ContactKapData[]): number {
     count++
   }
 
-  return count > 0 ? total / count : 50 // neutral if no sentiment data
+  return count > 0 ? total / count : 50
 }
 
-// Deal confidence scoring
+// V3 deal confidence scoring: stage 35%, relationship 30%, engagement 20%, sentiment 15%
 export function computeDealConfidence(
   deal: HubSpotDeal,
   contacts: ContactKapData[],
@@ -185,21 +165,24 @@ export function computeDealConfidence(
     engRecency = avgDays <= 7 ? 1 : avgDays <= 14 ? 0.8 : avgDays <= 21 ? 0.5 : 0.2
   }
 
-  // Velocity: simplified — assume average for now
-  const velocity = 0.5
+  // Sentiment from contact intelligence
+  let sentimentFactor = 0.5
+  const contactsWithSentiment = associatedContacts.filter(c => c.intelligence?.interaction_sentiment && c.intelligence.interaction_sentiment !== 'UNKNOWN')
+  if (contactsWithSentiment.length > 0) {
+    const sentimentValues: Record<string, number> = { POSITIVE: 1, NEUTRAL: 0.6, NEGATIVE: 0.2 }
+    sentimentFactor = contactsWithSentiment.reduce((sum, c) => sum + (sentimentValues[c.intelligence!.interaction_sentiment] ?? 0.5), 0) / contactsWithSentiment.length
+  }
 
-  const confidence = (stageProbability * 0.4) + (relStrength * 0.3) + (engRecency * 0.2) + (velocity * 0.1)
+  const confidence = (stageProbability * 0.35) + (relStrength * 0.30) + (engRecency * 0.20) + (sentimentFactor * 0.15)
   return Math.round(confidence * 100)
 }
 
 function generateSummary(
   contacts: ContactKapData[],
   deals: HubSpotDeal[],
-  deliveryMetrics: DeliveryMetrics[],
   relScore: number,
   pipScore: number,
   engScore: number,
-  delScore: number,
   momScore: number,
   sentScore: number,
 ): string[] {
@@ -219,10 +202,8 @@ function generateSummary(
     items.push('All priority contacts engaged within thresholds')
   }
 
-  if (deliveryMetrics.length > 0) {
-    items.push(`Delivery velocity at ${Math.round(delScore)}% on-time (trailing 30 days)`)
-  } else {
-    items.push('Delivery tracking not connected — connect Asana for delivery scoring')
+  if (sentScore < 50) {
+    items.push('Sentiment trending negative — review recent interactions')
   }
 
   return items

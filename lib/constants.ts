@@ -75,6 +75,11 @@ export const SIGNAL_ICONS: Record<SignalType, string> = {
   DELIVERY_SLIP: '🚨',
   MEETING_PREP: '📅',
   SENTIMENT_SHIFT: '💬',
+  FINANCE_ALERT: '💷',
+  NEW_HIRE: '👋',
+  JOB_POSTING: '📝',
+  EVENT: '🎪',
+  CAMPAIGN_DETECTED: '📣',
 }
 
 export const EOSIC_LABELS: Record<EOSICArea, { label: string; icon: string }> = {
@@ -122,11 +127,11 @@ export const OWNER_ROLES: Record<string, string> = {
 
 export const TABS = [
   { id: 'overview', label: 'Overview' },
-  { id: 'relationships', label: 'Relationships' },
+  { id: 'people', label: 'People' },
   { id: 'pipeline', label: 'Pipeline' },
   { id: 'intelligence', label: 'Intelligence' },
   { id: 'action-plan', label: 'Action Plan' },
-  { id: 'deliverables', label: 'Deliverables' },
+  { id: 'performance', label: 'Performance' },
   { id: 'coach', label: 'Coach' },
 ] as const
 
@@ -136,10 +141,13 @@ export const INTELLIGENCE_LAYERS = [
   { id: 'profile', label: 'Profile', icon: '👤' },
   { id: 'career', label: 'Career History', icon: '📈' },
   { id: 'voice', label: 'Public Voice', icon: '🎤' },
+  { id: 'communication', label: 'Communication Style', icon: '🧠' },
   { id: 'interactions', label: 'Recent Interactions', icon: '💬' },
   { id: 'network', label: 'Network', icon: '🕸' },
+  { id: 'events', label: 'Events', icon: '📅' },
+  { id: 'priorities', label: 'Priorities', icon: '🎯' },
   { id: 'signals', label: 'Signals', icon: '📡' },
-  { id: 'next-step', label: 'Next Step', icon: '🎯' },
+  { id: 'next-step', label: 'Next Step', icon: '✅' },
 ] as const
 
 export type IntelligenceLayerId = typeof INTELLIGENCE_LAYERS[number]['id']

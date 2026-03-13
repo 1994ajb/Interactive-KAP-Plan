@@ -16,6 +16,11 @@ export type SignalType =
   | 'DELIVERY_SLIP'
   | 'MEETING_PREP'
   | 'SENTIMENT_SHIFT'
+  | 'FINANCE_ALERT'
+  | 'NEW_HIRE'
+  | 'JOB_POSTING'
+  | 'EVENT'
+  | 'CAMPAIGN_DETECTED'
 
 export type EOSICArea = 'POLITICAL' | 'ECONOMIC' | 'SOCIOLOGICAL' | 'TECHNOLOGICAL' | 'LEGAL' | 'ENVIRONMENTAL'
 
@@ -37,8 +42,17 @@ export interface Account {
   strengths: string[]
   vulnerabilities: string[]
   target_annual_revenue: number
+  social_strategy_summary?: string | null
+  key_initiatives?: KeyInitiative[] | null
+  client_challenges?: string[] | null
   created_at: string
   updated_at: string
+}
+
+export interface KeyInitiative {
+  name: string
+  status: 'active' | 'planned' | 'completed'
+  description: string
 }
 
 export interface ContactKapData {
@@ -56,6 +70,9 @@ export interface ContactKapData {
   next_step_generated_at?: string | null
   tenure: string
   linkedin_url?: string | null
+  staleness_threshold_days?: number | null
+  reports_to?: string | null
+  direct_reports?: string[] | null
   created_at: string
   updated_at: string
   // Enriched from HubSpot
@@ -70,16 +87,47 @@ export interface ContactKapData {
 export interface ContactIntelligence {
   id: string
   contact_kap_id: string
+  // Career layer
   work_history_summary: string | null
+  career_trajectory?: string | null
+  // Public Voice layer
   thought_leadership: string[] | null
   recent_linkedin_posts: LinkedInPost[] | null
+  conference_appearances?: string[] | null
+  press_quotes?: string[] | null
+  awards?: string[] | null
+  // Interactions layer
   interaction_summary: string | null
   interaction_sentiment: InteractionSentiment
   meeting_frequency_days: number | null
   invite_acceptance_rate: number | null
+  // Network layer
+  meeting_coattendees?: string[] | null
+  email_cc_patterns?: string[] | null
+  // Communication Style / Personality layer
+  personality_profile?: string | null
+  communication_style?: string | null
+  decision_pattern?: string | null
+  motivations?: string[] | null
+  frustrations?: string[] | null
+  recommended_approach?: string | null
+  // Events layer
+  upcoming_events?: ContactEvent[] | null
+  recent_events?: ContactEvent[] | null
+  // Priorities layer
+  priorities_assessment?: string | null
+  // Enrichment tracking
+  enrichment_completeness?: number | null
   last_enriched_at: string | null
   created_at: string
   updated_at: string
+}
+
+export interface ContactEvent {
+  name: string
+  date: string
+  type: 'conference' | 'webinar' | 'internal' | 'industry'
+  relevance?: string
 }
 
 export interface LinkedInPost {
@@ -174,7 +222,6 @@ export interface HealthScore {
   relationship_score: number
   pipeline_score: number
   engagement_score: number
-  delivery_score: number
   momentum_score: number
   sentiment_score: number
   status: 'Healthy' | 'At Risk' | 'Critical'

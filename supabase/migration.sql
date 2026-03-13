@@ -1,4 +1,4 @@
--- KAP Intelligence Terminal — Database Schema v2
+-- KAP Intelligence Terminal — Database Schema v3
 -- Run this in your Supabase SQL editor to set up the database
 
 -- 1. Accounts
@@ -16,6 +16,9 @@ CREATE TABLE IF NOT EXISTS accounts (
   strengths TEXT[],
   vulnerabilities TEXT[],
   target_annual_revenue INTEGER,
+  social_strategy_summary TEXT,
+  key_initiatives JSONB, -- [{name, status, description}]
+  client_challenges TEXT[],
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
@@ -36,21 +39,48 @@ CREATE TABLE IF NOT EXISTS contact_kap_data (
   next_step_generated_at TIMESTAMPTZ,
   tenure TEXT,
   linkedin_url TEXT,
+  staleness_threshold_days INTEGER,
+  reports_to TEXT,
+  direct_reports TEXT[],
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 3. Contact intelligence cache (from Clay + Gmail + Calendar)
+-- 3. Contact intelligence cache (from Clay + Gmail + Calendar + AI)
 CREATE TABLE IF NOT EXISTS contact_intelligence (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   contact_kap_id UUID REFERENCES contact_kap_data(id),
+  -- Career layer
   work_history_summary TEXT,
+  career_trajectory TEXT,
+  -- Public Voice layer
   thought_leadership TEXT[],
   recent_linkedin_posts JSONB, -- [{date, text, url, engagement}]
+  conference_appearances TEXT[],
+  press_quotes TEXT[],
+  awards TEXT[],
+  -- Interactions layer
   interaction_summary TEXT, -- AI-generated from Gmail + HubSpot
   interaction_sentiment TEXT CHECK (interaction_sentiment IN ('POSITIVE', 'NEUTRAL', 'NEGATIVE', 'UNKNOWN')),
   meeting_frequency_days NUMERIC, -- avg days between meetings from Calendar
   invite_acceptance_rate NUMERIC, -- % of calendar invites accepted
+  -- Network layer
+  meeting_coattendees TEXT[],
+  email_cc_patterns TEXT[],
+  -- Communication Style / Personality layer
+  personality_profile TEXT,
+  communication_style TEXT,
+  decision_pattern TEXT,
+  motivations TEXT[],
+  frustrations TEXT[],
+  recommended_approach TEXT,
+  -- Events layer
+  upcoming_events JSONB, -- [{name, date, type, relevance}]
+  recent_events JSONB, -- [{name, date, type, relevance}]
+  -- Priorities layer
+  priorities_assessment TEXT,
+  -- Enrichment tracking
+  enrichment_completeness NUMERIC,
   last_enriched_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
@@ -97,11 +127,11 @@ CREATE TABLE IF NOT EXISTS man_marking (
 CREATE TABLE IF NOT EXISTS signals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   account_id UUID REFERENCES accounts(id),
-  type TEXT CHECK (type IN ('ENGAGEMENT_GAP', 'PIPELINE_MOVE', 'ORG_CHANGE', 'NEWS', 'LINKEDIN_POST', 'SOCIAL_ACTIVITY', 'COMPETITOR', 'REGULATION', 'DELIVERY_SLIP', 'MEETING_PREP', 'SENTIMENT_SHIFT')),
+  type TEXT CHECK (type IN ('ENGAGEMENT_GAP', 'PIPELINE_MOVE', 'ORG_CHANGE', 'NEWS', 'LINKEDIN_POST', 'SOCIAL_ACTIVITY', 'COMPETITOR', 'REGULATION', 'DELIVERY_SLIP', 'MEETING_PREP', 'SENTIMENT_SHIFT', 'FINANCE_ALERT', 'NEW_HIRE', 'JOB_POSTING', 'EVENT', 'CAMPAIGN_DETECTED')),
   priority TEXT CHECK (priority IN ('HIGH', 'MEDIUM', 'LOW')),
   title TEXT NOT NULL,
   detail TEXT,
-  source TEXT, -- e.g., 'HubSpot', 'Clay', 'Gmail', 'Google Calendar', 'Slack', 'Asana'
+  source TEXT,
   source_url TEXT,
   related_contact_id UUID REFERENCES contact_kap_data(id),
   timestamp TIMESTAMPTZ DEFAULT now(),
@@ -139,6 +169,18 @@ CREATE TABLE IF NOT EXISTS campaign_metrics (
   captured_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- 10. Connected team members (cross-team Gmail/Calendar visibility)
+CREATE TABLE IF NOT EXISTS connected_team_members (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID REFERENCES accounts(id),
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  role TEXT,
+  gmail_connected BOOLEAN DEFAULT false,
+  calendar_connected BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_contacts_account ON contact_kap_data(account_id);
 CREATE INDEX IF NOT EXISTS idx_contact_intel ON contact_intelligence(contact_kap_id);
@@ -150,3 +192,4 @@ CREATE INDEX IF NOT EXISTS idx_signals_timestamp ON signals(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_signals_contact ON signals(related_contact_id);
 CREATE INDEX IF NOT EXISTS idx_delivery_account ON delivery_metrics(account_id);
 CREATE INDEX IF NOT EXISTS idx_campaign_account ON campaign_metrics(account_id);
+CREATE INDEX IF NOT EXISTS idx_team_members_account ON connected_team_members(account_id);

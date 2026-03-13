@@ -61,11 +61,10 @@ export default function Overview({ data }: OverviewProps) {
               </ul>
             </div>
             {/* Score breakdown */}
-            <div className="mt-4 pt-4 border-t border-border-light grid grid-cols-3 gap-3 text-xs">
+            <div className="mt-4 pt-4 border-t border-border-light grid grid-cols-5 gap-3 text-xs">
               <div><span className="text-text-dim">Relationships</span> <span className="font-mono font-medium text-text-primary ml-1">{healthScore.relationship_score}%</span></div>
               <div><span className="text-text-dim">Pipeline</span> <span className="font-mono font-medium text-text-primary ml-1">{healthScore.pipeline_score}%</span></div>
               <div><span className="text-text-dim">Engagement</span> <span className="font-mono font-medium text-text-primary ml-1">{healthScore.engagement_score}%</span></div>
-              <div><span className="text-text-dim">Delivery</span> <span className="font-mono font-medium text-text-primary ml-1">{healthScore.delivery_score}%</span></div>
               <div><span className="text-text-dim">Momentum</span> <span className="font-mono font-medium text-text-primary ml-1">{healthScore.momentum_score}%</span></div>
               <div><span className="text-text-dim">Sentiment</span> <span className="font-mono font-medium text-text-primary ml-1">{healthScore.sentiment_score}%</span></div>
             </div>
