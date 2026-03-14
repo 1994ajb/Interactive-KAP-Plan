@@ -172,8 +172,14 @@ async function tryFetchFromSupabase(accountId: string): Promise<SupabaseAccountR
     // If it doesn't exist yet, the import will throw and we fall through.
     const queries = await import('./supabase-queries')
 
+    // Resolve account first (supports both UUID and slug lookup)
+    const account = await queries.getAccount(accountId)
+    if (!account) return null
+
+    // Use the resolved UUID for all subsequent queries
+    const resolvedId = account.id
+
     const [
-      account,
       contacts,
       eosic,
       opportunities,
@@ -183,15 +189,14 @@ async function tryFetchFromSupabase(accountId: string): Promise<SupabaseAccountR
       campaignMetrics,
       crossBrandContacts,
     ] = await Promise.all([
-      queries.getAccount(accountId),
-      queries.getContactsWithIntelligence(accountId),
-      queries.getEosicEntries(accountId),
-      queries.getOpportunities(accountId),
-      queries.getManMarking(accountId),
-      queries.getSignals(accountId),
-      queries.getDeliveryMetrics(accountId),
-      queries.getCampaignMetrics(accountId),
-      queries.getCrossBrandContacts(accountId),
+      queries.getContactsWithIntelligence(resolvedId),
+      queries.getEosicEntries(resolvedId),
+      queries.getOpportunities(resolvedId),
+      queries.getManMarking(resolvedId),
+      queries.getSignals(resolvedId),
+      queries.getDeliveryMetrics(resolvedId),
+      queries.getCampaignMetrics(resolvedId),
+      queries.getCrossBrandContacts(resolvedId),
     ])
 
     return {

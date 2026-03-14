@@ -14,20 +14,43 @@ import type {
 
 // ─── Account ────────────────────────────────────────────────────────────────
 
+/** Convert a name like "Vaseline UK" to a slug like "vaseline-uk" */
+function nameToSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+}
+
+/** UUID v4 pattern check */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export async function getAccount(accountId: string): Promise<Account | null> {
   try {
-    const { data, error } = await supabase
+    // If it looks like a UUID, query by id directly
+    if (UUID_RE.test(accountId)) {
+      const { data, error } = await supabase
+        .from('accounts')
+        .select('*')
+        .eq('id', accountId)
+        .single()
+
+      if (error) {
+        console.error('Error fetching account by id:', error.message)
+        return null
+      }
+      return data as Account
+    }
+
+    // Otherwise treat it as a slug — fetch all accounts and match by name
+    const { data: accounts, error } = await supabase
       .from('accounts')
       .select('*')
-      .eq('id', accountId)
-      .single()
 
-    if (error) {
-      console.error('Error fetching account:', error.message)
+    if (error || !accounts) {
+      console.error('Error fetching accounts for slug lookup:', error?.message)
       return null
     }
 
-    return data as Account
+    const match = accounts.find((a) => nameToSlug(a.name) === accountId)
+    return (match as Account) ?? null
   } catch (err) {
     console.error('Unexpected error in getAccount:', err)
     return null
