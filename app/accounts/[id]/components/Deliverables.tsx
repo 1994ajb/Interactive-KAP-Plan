@@ -44,6 +44,7 @@ export default function Performance({ deliveryMetrics, campaignMetrics, integrat
           deliveryVelocity: latestDelivery?.delivery_velocity ?? null,
         }),
       })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setValueNarrative(data.narrative || data.error || 'Failed to generate')
     } catch {

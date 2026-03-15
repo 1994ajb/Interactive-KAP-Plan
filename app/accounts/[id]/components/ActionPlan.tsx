@@ -32,11 +32,12 @@ export default function ActionPlan({ account, manMarking, contacts = [], onNavig
     setWhyValidated(newValue)
     // Persist to Supabase
     try {
-      await fetch('/api/account/update-validation', {
+      const res = await fetch('/api/account/update-validation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ accountId: account.id, validated: newValue }),
       })
+      if (!res.ok) console.error('[toggleValidation] Failed:', res.status)
     } catch { /* silent */ }
   }
 
@@ -55,6 +56,7 @@ export default function ActionPlan({ account, manMarking, contacts = [], onNavig
           accountObjective: account.objective_retention,
         }),
       })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       setWeeklyRecs(prev => ({ ...prev, [member.id]: { loading: false, text: data.recommendation || data.error || 'Failed to generate' } }))
     } catch {

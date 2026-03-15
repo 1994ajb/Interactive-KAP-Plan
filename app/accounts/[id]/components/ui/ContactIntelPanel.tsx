@@ -164,6 +164,7 @@ export default function ContactIntelPanel({ contact, signals, accountName, accou
           prioritiesAssessment: contact.intelligence?.priorities_assessment,
         }),
       })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       if (data.recommendation) {
         setNextStepText(data.recommendation)
@@ -191,6 +192,7 @@ export default function ContactIntelPanel({ contact, signals, accountName, accou
           linkedinUrl: contact.linkedin_url,
         }),
       })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       if (data.error) {
         setEnrichResult(data.error)
@@ -217,6 +219,7 @@ export default function ContactIntelPanel({ contact, signals, accountName, accou
           linkedinUrl: contact.linkedin_url,
         }),
       })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
       if (data.error) {
         setWebSearchResult(data.error)
