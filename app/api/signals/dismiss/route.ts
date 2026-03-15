@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { getSupabase } from '@/lib/supabase'
 
 export async function POST(request: Request) {
   try {
@@ -7,15 +8,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'signalId is required' }, { status: 400 })
     }
 
-    // Try to update Supabase if configured
-    try {
-      const { supabase } = await import('@/lib/supabase')
-      await supabase
+    const supabase = getSupabase()
+    if (supabase) {
+      const { error } = await supabase
         .from('signals')
         .update({ dismissed: true, dismissed_at: new Date().toISOString() })
         .eq('id', signalId)
-    } catch {
-      // Supabase not configured — dismiss is UI-only
+
+      if (error) {
+        console.error('[signals/dismiss] Supabase error:', error.message)
+      }
     }
 
     return NextResponse.json({ success: true })

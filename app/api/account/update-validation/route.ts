@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { getSupabase } from '@/lib/supabase'
 
 export async function POST(request: Request) {
   try {
@@ -7,14 +8,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'accountId required' }, { status: 400 })
     }
 
-    try {
-      const { supabase } = await import('@/lib/supabase')
-      await supabase
+    const supabase = getSupabase()
+    if (supabase) {
+      const { error } = await supabase
         .from('accounts')
         .update({ why_validated_by_client: validated, updated_at: new Date().toISOString() })
         .eq('id', accountId)
-    } catch {
-      // Supabase not configured
+
+      if (error) {
+        console.error('[update-validation] Supabase error:', error.message)
+      }
     }
 
     return NextResponse.json({ success: true })
