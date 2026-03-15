@@ -67,6 +67,41 @@ export async function searchDeals(query: string): Promise<HubSpotDealRaw[]> {
   return data?.results ?? []
 }
 
+export async function getDealsForCompanies(companyIds: string[]): Promise<HubSpotDealRaw[]> {
+  if (!HUBSPOT_TOKEN || companyIds.length === 0) return []
+
+  const allDeals: HubSpotDealRaw[] = []
+
+  for (const companyId of companyIds) {
+    // Get associated deal IDs
+    const assocData = await hubspotFetch(
+      `/crm/v3/objects/companies/${companyId}/associations/deals`
+    )
+    const dealIds: string[] = (assocData?.results ?? []).map((r: any) => r.id)
+    if (dealIds.length === 0) continue
+
+    // Batch-read deal properties
+    const batchData = await hubspotFetch('/crm/v3/objects/deals/batch/read', {
+      method: 'POST',
+      body: JSON.stringify({
+        inputs: dealIds.map(id => ({ id })),
+        properties: ['dealname', 'amount', 'dealstage', 'pipeline', 'closedate', 'hubspot_owner_id'],
+      }),
+    })
+
+    const results: HubSpotDealRaw[] = batchData?.results ?? []
+    allDeals.push(...results)
+  }
+
+  // Deduplicate by deal ID
+  const seen = new Set<string>()
+  return allDeals.filter(d => {
+    if (seen.has(d.id)) return false
+    seen.add(d.id)
+    return true
+  })
+}
+
 export async function getContact(contactId: string): Promise<HubSpotContact | null> {
   const data = await hubspotFetch(
     `/crm/v3/objects/contacts/${contactId}?properties=firstname,lastname,email,jobtitle,hubspot_owner_id,notes_last_contacted`
