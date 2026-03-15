@@ -1,4 +1,4 @@
-import { supabase } from './supabase'
+import { getSupabase } from './supabase'
 import type {
   Account,
   ContactKapData,
@@ -24,6 +24,9 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 export async function getAccount(accountId: string): Promise<Account | null> {
   try {
+    const supabase = getSupabase()
+    if (!supabase) return null
+
     // If it looks like a UUID, query by id directly
     if (UUID_RE.test(accountId)) {
       const { data, error } = await supabase
@@ -63,6 +66,9 @@ export async function getContactsWithIntelligence(
   accountId: string
 ): Promise<ContactKapData[]> {
   try {
+    const supabase = getSupabase()
+    if (!supabase) return []
+
     const { data: contacts, error: contactsError } = await supabase
       .from('contact_kap_data')
       .select('*')
@@ -117,6 +123,9 @@ export async function updateContactIntelligence(
   data: Partial<ContactIntelligence>
 ): Promise<boolean> {
   try {
+    const supabase = getSupabase()
+    if (!supabase) return false
+
     const { error } = await supabase
       .from('contact_intelligence')
       .update({ ...data, updated_at: new Date().toISOString() })
@@ -141,6 +150,9 @@ export async function updateContactKapData(
   data: Partial<ContactKapData>
 ): Promise<boolean> {
   try {
+    const supabase = getSupabase()
+    if (!supabase) return false
+
     const { error } = await supabase
       .from('contact_kap_data')
       .update({ ...data, updated_at: new Date().toISOString() })
@@ -164,6 +176,9 @@ export async function getEosicEntries(
   accountId: string
 ): Promise<EOSICEntry[]> {
   try {
+    const supabase = getSupabase()
+    if (!supabase) return []
+
     const { data, error } = await supabase
       .from('eosic_entries')
       .select('*')
@@ -187,6 +202,9 @@ export async function getOpportunities(
   accountId: string
 ): Promise<Opportunity[]> {
   try {
+    const supabase = getSupabase()
+    if (!supabase) return []
+
     const { data, error } = await supabase
       .from('opportunities')
       .select('*')
@@ -210,6 +228,9 @@ export async function getManMarking(
   accountId: string
 ): Promise<ManMarking[]> {
   try {
+    const supabase = getSupabase()
+    if (!supabase) return []
+
     const { data, error } = await supabase
       .from('man_marking')
       .select('*')
@@ -231,6 +252,9 @@ export async function getManMarking(
 
 export async function getSignals(accountId: string): Promise<Signal[]> {
   try {
+    const supabase = getSupabase()
+    if (!supabase) return []
+
     const { data, error } = await supabase
       .from('signals')
       .select('*')
@@ -256,6 +280,9 @@ export async function upsertSignal(
   signal: Omit<Signal, 'id'>
 ): Promise<boolean> {
   try {
+    const supabase = getSupabase()
+    if (!supabase) return false
+
     const { error } = await supabase
       .from('signals')
       .upsert(signal, { onConflict: 'account_id,type,title' })
@@ -278,6 +305,9 @@ export async function getDeliveryMetrics(
   accountId: string
 ): Promise<DeliveryMetrics[]> {
   try {
+    const supabase = getSupabase()
+    if (!supabase) return []
+
     const { data, error } = await supabase
       .from('delivery_metrics')
       .select('*')
@@ -301,6 +331,9 @@ export async function getCampaignMetrics(
   accountId: string
 ): Promise<CampaignMetrics[]> {
   try {
+    const supabase = getSupabase()
+    if (!supabase) return []
+
     const { data, error } = await supabase
       .from('campaign_metrics')
       .select('*')
@@ -324,6 +357,9 @@ export async function getConnectedTeamMembers(
   accountId: string
 ): Promise<any[]> {
   try {
+    const supabase = getSupabase()
+    if (!supabase) return []
+
     const { data, error } = await supabase
       .from('connected_team_members')
       .select('*')
@@ -347,6 +383,9 @@ export async function getCrossBrandContacts(
   accountId: string
 ): Promise<CrossBrandContact[]> {
   try {
+    const supabase = getSupabase()
+    if (!supabase) return []
+
     const { data, error } = await supabase
       .from('cross_brand_contacts')
       .select('*')
