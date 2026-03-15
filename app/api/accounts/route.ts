@@ -4,7 +4,6 @@ import { NextResponse } from 'next/server'
 import { getSupabase } from '@/lib/supabase'
 import { getDealsForCompanies } from '@/lib/hubspot'
 import { computeHealthScore } from '@/lib/health-score'
-import { getMockAccountData } from '@/lib/mock-data'
 import { STALENESS_THRESHOLDS, PIPELINE_STAGES } from '@/lib/constants'
 import type { ContactKapData, HubSpotDeal, Signal, Account } from '@/lib/types'
 
@@ -20,14 +19,10 @@ interface AccountSummary {
   lastActivity: string
 }
 
-/** Slug from account name — matches the mock-data convention */
-function nameToSlug(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-}
-
 export async function GET() {
   const supabase = getSupabase()
   if (!supabase) {
+    console.log('[/api/accounts] Supabase client is null — env vars missing')
     return NextResponse.json([])
   }
 
@@ -37,6 +32,12 @@ export async function GET() {
       .from('accounts')
       .select('*')
       .order('name')
+
+    console.log('[/api/accounts] accounts query:', {
+      count: accounts?.length ?? 0,
+      error: accErr?.message ?? null,
+      ids: accounts?.map((a: any) => ({ id: a.id, name: a.name })) ?? [],
+    })
 
     if (accErr || !accounts || accounts.length === 0) {
       return NextResponse.json([])
@@ -50,12 +51,24 @@ export async function GET() {
       supabase.from('signals').select('*').in('account_id', accountIds).eq('dismissed', false),
     ])
 
+    console.log('[/api/accounts] contacts query:', {
+      count: contactsResult.data?.length ?? 0,
+      error: contactsResult.error?.message ?? null,
+    })
+    console.log('[/api/accounts] signals query:', {
+      count: signalsResult.data?.length ?? 0,
+      error: signalsResult.error?.message ?? null,
+    })
+
+    // Log a sample of contact account_ids to verify they match
+    if (contactsResult.data && contactsResult.data.length > 0) {
+      const sampleContactAccountIds = Array.from(new Set(contactsResult.data.map((c: any) => c.account_id)))
+      console.log('[/api/accounts] contact account_ids in DB:', sampleContactAccountIds)
+      console.log('[/api/accounts] account UUIDs we queried:', accountIds)
+    }
+
     const dbContacts: ContactKapData[] = (contactsResult.data ?? []) as ContactKapData[]
     const dbSignals: Signal[] = (signalsResult.data ?? []) as Signal[]
-
-    // Load mock data for fallback (Vaseline UK has rich mock data)
-    const mockData = getMockAccountData()
-    const mockSlug = nameToSlug(mockData.account.name) // 'vaseline-uk'
 
     // Group DB contacts and signals by account
     const contactsByAccount = new Map<string, ContactKapData[]>()
@@ -72,6 +85,13 @@ export async function GET() {
       signalsByAccount.set(s.account_id, list)
     }
 
+    // Log grouped counts per account
+    for (const a of accounts) {
+      const cCount = contactsByAccount.get(a.id)?.length ?? 0
+      const sCount = signalsByAccount.get(a.id)?.length ?? 0
+      console.log(`[/api/accounts] ${a.name} (${a.id}): ${cCount} contacts, ${sCount} signals`)
+    }
+
     // HubSpot deals
     const hubspotConfigured = !!process.env.HUBSPOT_ACCESS_TOKEN
     const dealsByAccount = new Map<string, HubSpotDeal[]>()
@@ -83,6 +103,7 @@ export async function GET() {
 
         try {
           const rawDeals = await getDealsForCompanies(companyIds)
+          console.log(`[/api/accounts] HubSpot deals for ${a.name}: ${rawDeals.length} raw deals`)
           const mapped: HubSpotDeal[] = rawDeals.map(raw => {
             const props = raw.properties
             const dealstage = props.dealstage ?? ''
@@ -100,7 +121,8 @@ export async function GET() {
             }
           })
           return { accountId: a.id, deals: mapped }
-        } catch {
+        } catch (e) {
+          console.error(`[/api/accounts] HubSpot error for ${a.name}:`, e)
           return { accountId: a.id, deals: [] as HubSpotDeal[] }
         }
       })
@@ -109,23 +131,15 @@ export async function GET() {
       for (const r of results) {
         dealsByAccount.set(r.accountId, r.deals)
       }
+    } else {
+      console.log('[/api/accounts] HubSpot not configured — no deals')
     }
 
-    // Build summaries with mock-data fallback
+    // Build summaries from live Supabase data
     const summaries: AccountSummary[] = accounts.map((a: Account) => {
-      const slug = nameToSlug(a.name)
-      const isMockAccount = slug === mockSlug
-
-      // Use DB data, fall back to mock for the matching account
-      let acctContacts = contactsByAccount.get(a.id) ?? []
-      let acctSignals = signalsByAccount.get(a.id) ?? []
-      let acctDeals = dealsByAccount.get(a.id) ?? []
-
-      if (isMockAccount) {
-        if (acctContacts.length === 0) acctContacts = mockData.contacts
-        if (acctSignals.length === 0) acctSignals = mockData.signals
-        if (acctDeals.length === 0) acctDeals = mockData.deals
-      }
+      const acctContacts = contactsByAccount.get(a.id) ?? []
+      const acctSignals = signalsByAccount.get(a.id) ?? []
+      const acctDeals = dealsByAccount.get(a.id) ?? []
 
       // Recompute staleness
       const enrichedContacts = acctContacts.map(c => ({
@@ -143,7 +157,7 @@ export async function GET() {
       const healthScore = computeHealthScore({
         contacts: enrichedContacts,
         deals: acctDeals,
-        pipelineTarget: a.target_annual_revenue,
+        pipelineTarget: a.target_annual_revenue || 150000,
       })
 
       // Latest activity
@@ -155,7 +169,7 @@ export async function GET() {
         ? timestamps.sort().reverse()[0]
         : a.created_at || new Date().toISOString()
 
-      return {
+      const summary = {
         id: a.id,
         name: a.name,
         tier: a.tier || 'MAINTENANCE',
@@ -166,11 +180,15 @@ export async function GET() {
         signalCount: acctSignals.length,
         lastActivity,
       }
+
+      console.log(`[/api/accounts] FINAL ${a.name}:`, JSON.stringify(summary))
+
+      return summary
     })
 
     return NextResponse.json(summaries)
   } catch (err) {
-    console.error('[/api/accounts] Error:', err)
+    console.error('[/api/accounts] Unhandled error:', err)
     return NextResponse.json([])
   }
 }
