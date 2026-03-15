@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextResponse } from 'next/server'
 import { searchDeals } from '@/lib/hubspot'
 import { PIPELINE_STAGES } from '@/lib/constants'

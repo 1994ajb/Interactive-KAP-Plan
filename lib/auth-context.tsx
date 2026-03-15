@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { User, Session } from '@supabase/supabase-js'
-import { supabaseBrowser } from './supabase-browser'
+import { getSupabaseBrowser } from './supabase-browser'
 
 interface AuthContextType {
   user: User | null
@@ -32,13 +32,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabaseBrowser.auth.getSession().then(({ data: { session } }) => {
+    const client = getSupabaseBrowser()
+    if (!client) {
+      setLoading(false)
+      return
+    }
+
+    client.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabaseBrowser.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
       setLoading(false)
@@ -50,29 +56,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithEmail = async (email: string, password: string) => {
     const domainError = validateDomain(email)
     if (domainError) return { error: domainError }
+    const client = getSupabaseBrowser()
+    if (!client) return { error: 'Auth not available' }
 
-    const { error } = await supabaseBrowser.auth.signInWithPassword({ email, password })
+    const { error } = await client.auth.signInWithPassword({ email, password })
     return { error: error?.message ?? null }
   }
 
   const signUpWithEmail = async (email: string, password: string) => {
     const domainError = validateDomain(email)
     if (domainError) return { error: domainError }
+    const client = getSupabaseBrowser()
+    if (!client) return { error: 'Auth not available' }
 
-    const { error } = await supabaseBrowser.auth.signUp({ email, password })
+    const { error } = await client.auth.signUp({ email, password })
     return { error: error?.message ?? null }
   }
 
   const signInWithMagicLink = async (email: string) => {
     const domainError = validateDomain(email)
     if (domainError) return { error: domainError }
+    const client = getSupabaseBrowser()
+    if (!client) return { error: 'Auth not available' }
 
-    const { error } = await supabaseBrowser.auth.signInWithOtp({ email })
+    const { error } = await client.auth.signInWithOtp({ email })
     return { error: error?.message ?? null }
   }
 
   const signOut = async () => {
-    await supabaseBrowser.auth.signOut()
+    const client = getSupabaseBrowser()
+    if (client) await client.auth.signOut()
   }
 
   return (
