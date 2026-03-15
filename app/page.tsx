@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
+import { useAuth } from '@/lib/auth-context'
 
 interface AccountSummary {
   id: string
@@ -61,6 +62,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function PortfolioHome() {
+  const { user, signOut } = useAuth()
   const [accounts, setAccounts] = useState<AccountSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [sortKey, setSortKey] = useState<SortKey>('name')
@@ -137,6 +139,12 @@ export default function PortfolioHome() {
               placeholder="Search accounts..."
               className="bg-page border border-border rounded-lg px-3 py-1.5 text-sm text-text-primary placeholder:text-text-dim w-56 outline-none focus:border-accent transition-colors"
             />
+            {user && (
+              <div className="flex items-center gap-2 pl-3 border-l border-border">
+                <span className="text-meta truncate max-w-[140px]">{user.email}</span>
+                <button onClick={signOut} className="text-xs text-text-secondary hover:text-danger transition-colors">Sign out</button>
+              </div>
+            )}
           </div>
         </div>
       </div>

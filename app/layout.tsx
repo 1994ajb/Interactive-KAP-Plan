@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { AuthProvider } from '@/lib/auth-context'
+import { AuthGuard } from '@/lib/auth-guard'
 
 export const metadata: Metadata = {
   title: 'KAP Intelligence Terminal',
@@ -14,7 +16,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-page min-h-screen antialiased">
-        {children}
+        <AuthProvider>
+          <AuthGuard>
+            {children}
+          </AuthGuard>
+        </AuthProvider>
       </body>
     </html>
   )
