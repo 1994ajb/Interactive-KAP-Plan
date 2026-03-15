@@ -60,11 +60,15 @@ export async function GET() {
       error: signalsResult.error?.message ?? null,
     })
 
-    // Log a sample of contact account_ids to verify they match
+    // Log contact account_ids to verify they match
     if (contactsResult.data && contactsResult.data.length > 0) {
       const sampleContactAccountIds = Array.from(new Set(contactsResult.data.map((c: any) => c.account_id)))
       console.log('[/api/accounts] contact account_ids in DB:', sampleContactAccountIds)
       console.log('[/api/accounts] account UUIDs we queried:', accountIds)
+    } else {
+      console.log('[/api/accounts] ZERO contacts returned. Account UUIDs queried:', accountIds)
+      console.log('[/api/accounts] contacts error details:', contactsResult.error)
+      console.log('[/api/accounts] signals error details:', signalsResult.error)
     }
 
     const dbContacts: ContactKapData[] = (contactsResult.data ?? []) as ContactKapData[]
