@@ -14,6 +14,10 @@ import {
 interface ContactIntelPanelProps {
   contact: ContactKapData
   signals: Signal[]
+  accountName?: string
+  accountTier?: string
+  accountObjectiveRetention?: string
+  accountObjectiveDevelopment?: string
 }
 
 export function relativeTime(dateStr: string): string {
@@ -91,7 +95,7 @@ function EnrichmentRing({ completeness }: { completeness: number }) {
   )
 }
 
-export default function ContactIntelPanel({ contact, signals }: ContactIntelPanelProps) {
+export default function ContactIntelPanel({ contact, signals, accountName, accountTier, accountObjectiveRetention, accountObjectiveDevelopment }: ContactIntelPanelProps) {
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(['next-step', 'communication', 'interactions'])
   )
@@ -145,10 +149,10 @@ export default function ContactIntelPanel({ contact, signals }: ContactIntelPane
         body: JSON.stringify({
           contactData: {
             ...contact,
-            account_name: 'Vaseline UK',
-            account_tier: 'RETENTION',
-            objective_retention: 'Stabilise the account',
-            objective_development: 'Grow through strategic value',
+            account_name: accountName ?? contact.account_id,
+            account_tier: accountTier ?? 'UNKNOWN',
+            objective_retention: accountObjectiveRetention ?? '',
+            objective_development: accountObjectiveDevelopment ?? '',
           },
           communicationProfile: contact.intelligence ? {
             personality_profile: contact.intelligence.personality_profile,
@@ -183,7 +187,7 @@ export default function ContactIntelPanel({ contact, signals }: ContactIntelPane
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contactName: contact.name,
-          company: 'Unilever',
+          company: accountName ?? contact.account_id,
           linkedinUrl: contact.linkedin_url,
         }),
       })
@@ -209,7 +213,7 @@ export default function ContactIntelPanel({ contact, signals }: ContactIntelPane
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contactName: contact.name,
-          company: 'Unilever',
+          company: accountName ?? contact.account_id,
           linkedinUrl: contact.linkedin_url,
         }),
       })

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { ContactKapData, Signal } from '@/lib/types'
 import { RELATIONSHIP_LEVEL_ORDER, RELATIONSHIP_COLORS, INTELLIGENCE_LAYERS } from '@/lib/constants'
 import ContactCard from './ui/ContactCard'
@@ -9,16 +9,20 @@ import ContactIntelPanel from './ui/ContactIntelPanel'
 interface RelationshipsProps {
   contacts: ContactKapData[]
   signals: Signal[]
+  accountName?: string
+  accountTier?: string
+  accountObjectiveRetention?: string
+  accountObjectiveDevelopment?: string
 }
 
-export default function Relationships({ contacts, signals }: RelationshipsProps) {
+export default function Relationships({ contacts, signals, accountName, accountTier, accountObjectiveRetention, accountObjectiveDevelopment }: RelationshipsProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [selectedIndex, setSelectedIndex] = useState<number>(-1)
 
-  const allContactsFlat = contacts.sort((a, b) => {
-    const levelOrder = RELATIONSHIP_LEVEL_ORDER
-    return levelOrder.indexOf(a.relationship_level) - levelOrder.indexOf(b.relationship_level)
-  })
+  const allContactsFlat = useMemo(() =>
+    [...contacts].sort((a, b) => {
+      return RELATIONSHIP_LEVEL_ORDER.indexOf(a.relationship_level) - RELATIONSHIP_LEVEL_ORDER.indexOf(b.relationship_level)
+    }), [contacts])
 
   const selected = contacts.find((c) => c.id === selectedId) ?? null
 
@@ -46,6 +50,12 @@ export default function Relationships({ contacts, signals }: RelationshipsProps)
         const newIdx = Math.max(selectedIndex - 1, 0)
         setSelectedIndex(newIdx)
         setSelectedId(allContactsFlat[newIdx]?.id ?? null)
+      } else if (e.key === 'Enter') {
+        e.preventDefault()
+        if (selectedIndex === -1 && allContactsFlat.length > 0) {
+          setSelectedIndex(0)
+          setSelectedId(allContactsFlat[0]?.id ?? null)
+        }
       } else if (e.key === 'Escape') {
         setSelectedId(null)
         setSelectedIndex(-1)
@@ -97,7 +107,14 @@ export default function Relationships({ contacts, signals }: RelationshipsProps)
             <p className="text-meta">Use arrow keys to navigate, Enter to select</p>
           </div>
         ) : (
-          <ContactIntelPanel contact={selected} signals={signals} />
+          <ContactIntelPanel
+            contact={selected}
+            signals={signals}
+            accountName={accountName}
+            accountTier={accountTier}
+            accountObjectiveRetention={accountObjectiveRetention}
+            accountObjectiveDevelopment={accountObjectiveDevelopment}
+          />
         )}
       </div>
     </div>

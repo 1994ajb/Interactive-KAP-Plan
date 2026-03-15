@@ -166,7 +166,14 @@ export default function AccountPage({ params }: { params: { id: string } }) {
       <main className="max-w-7xl mx-auto px-6 py-6">
         {activeTab === 'overview' && <Overview data={data} />}
         {activeTab === 'people' && (
-          <People contacts={data.contacts} signals={data.signals} />
+          <People
+            contacts={data.contacts}
+            signals={data.signals}
+            accountName={data.account.name}
+            accountTier={data.account.tier}
+            accountObjectiveRetention={data.account.objective_retention}
+            accountObjectiveDevelopment={data.account.objective_development}
+          />
         )}
         {activeTab === 'pipeline' && <Pipeline deals={data.deals} contacts={data.contacts} />}
         {activeTab === 'intelligence' && (
