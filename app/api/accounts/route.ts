@@ -4,8 +4,9 @@ import { NextResponse } from 'next/server'
 import { getSupabase } from '@/lib/supabase'
 import { getDealsForCompanies } from '@/lib/hubspot'
 import { computeHealthScore } from '@/lib/health-score'
+import { getMockAccountData } from '@/lib/mock-data'
 import { STALENESS_THRESHOLDS, PIPELINE_STAGES } from '@/lib/constants'
-import type { ContactKapData, HubSpotDeal, Account } from '@/lib/types'
+import type { ContactKapData, HubSpotDeal, Signal, Account } from '@/lib/types'
 
 interface AccountSummary {
   id: string
@@ -19,6 +20,11 @@ interface AccountSummary {
   lastActivity: string
 }
 
+/** Slug from account name — matches the mock-data convention */
+function nameToSlug(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+}
+
 export async function GET() {
   const supabase = getSupabase()
   if (!supabase) {
@@ -26,7 +32,7 @@ export async function GET() {
   }
 
   try {
-    // Fetch all accounts
+    // Fetch all accounts from Supabase
     const { data: accounts, error: accErr } = await supabase
       .from('accounts')
       .select('*')
@@ -36,31 +42,37 @@ export async function GET() {
       return NextResponse.json([])
     }
 
-    // Fetch all contacts and signals in bulk (two queries, not N)
+    // Fetch all contacts and signals in bulk
     const accountIds = accounts.map((a: Account) => a.id)
 
     const [contactsResult, signalsResult] = await Promise.all([
       supabase.from('contact_kap_data').select('*').in('account_id', accountIds),
-      supabase.from('signals').select('account_id').in('account_id', accountIds).eq('dismissed', false),
+      supabase.from('signals').select('*').in('account_id', accountIds).eq('dismissed', false),
     ])
 
-    const contacts: ContactKapData[] = (contactsResult.data ?? []) as ContactKapData[]
-    const signals = signalsResult.data ?? []
+    const dbContacts: ContactKapData[] = (contactsResult.data ?? []) as ContactKapData[]
+    const dbSignals: Signal[] = (signalsResult.data ?? []) as Signal[]
 
-    // Group contacts and signals by account
+    // Load mock data for fallback (Vaseline UK has rich mock data)
+    const mockData = getMockAccountData()
+    const mockSlug = nameToSlug(mockData.account.name) // 'vaseline-uk'
+
+    // Group DB contacts and signals by account
     const contactsByAccount = new Map<string, ContactKapData[]>()
-    for (const c of contacts) {
+    for (const c of dbContacts) {
       const list = contactsByAccount.get(c.account_id) ?? []
       list.push(c)
       contactsByAccount.set(c.account_id, list)
     }
 
-    const signalCountByAccount = new Map<string, number>()
-    for (const s of signals) {
-      signalCountByAccount.set(s.account_id, (signalCountByAccount.get(s.account_id) ?? 0) + 1)
+    const signalsByAccount = new Map<string, Signal[]>()
+    for (const s of dbSignals) {
+      const list = signalsByAccount.get(s.account_id) ?? []
+      list.push(s)
+      signalsByAccount.set(s.account_id, list)
     }
 
-    // Fetch HubSpot deals for all accounts in parallel
+    // HubSpot deals
     const hubspotConfigured = !!process.env.HUBSPOT_ACCESS_TOKEN
     const dealsByAccount = new Map<string, HubSpotDeal[]>()
 
@@ -99,13 +111,23 @@ export async function GET() {
       }
     }
 
-    // Build summaries
+    // Build summaries with mock-data fallback
     const summaries: AccountSummary[] = accounts.map((a: Account) => {
-      const acctContacts = contactsByAccount.get(a.id) ?? []
-      const acctDeals = dealsByAccount.get(a.id) ?? []
-      const acctSignalCount = signalCountByAccount.get(a.id) ?? 0
+      const slug = nameToSlug(a.name)
+      const isMockAccount = slug === mockSlug
 
-      // Recompute staleness on contacts for health score
+      // Use DB data, fall back to mock for the matching account
+      let acctContacts = contactsByAccount.get(a.id) ?? []
+      let acctSignals = signalsByAccount.get(a.id) ?? []
+      let acctDeals = dealsByAccount.get(a.id) ?? []
+
+      if (isMockAccount) {
+        if (acctContacts.length === 0) acctContacts = mockData.contacts
+        if (acctSignals.length === 0) acctSignals = mockData.signals
+        if (acctDeals.length === 0) acctDeals = mockData.deals
+      }
+
+      // Recompute staleness
       const enrichedContacts = acctContacts.map(c => ({
         ...c,
         is_stale: c.days_since_contact != null
@@ -113,18 +135,18 @@ export async function GET() {
           : c.is_stale ?? false,
       }))
 
-      // Active deals (not closed)
+      // Active deals
       const activeDeals = acctDeals.filter(d => d.dealstage !== 'closedwon' && d.dealstage !== 'closedlost')
       const pipelineValue = activeDeals.reduce((sum, d) => sum + (d.amount ?? 0), 0)
 
-      // Compute health score
+      // Health score
       const healthScore = computeHealthScore({
         contacts: enrichedContacts,
         deals: acctDeals,
         pipelineTarget: a.target_annual_revenue,
       })
 
-      // Find latest activity timestamp
+      // Latest activity
       const timestamps = [
         a.updated_at,
         ...acctContacts.map(c => c.last_contacted).filter(Boolean),
@@ -141,7 +163,7 @@ export async function GET() {
         contactCount: acctContacts.length,
         activeDeals: activeDeals.length,
         pipelineValue,
-        signalCount: acctSignalCount,
+        signalCount: acctSignals.length,
         lastActivity,
       }
     })
