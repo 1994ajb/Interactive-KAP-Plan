@@ -1,10 +1,16 @@
 'use client'
 
-import { useState } from 'react'
-import { AccountData } from '@/lib/types'
+import { useState, useCallback } from 'react'
+import { AccountData, UpcomingMeeting } from '@/lib/types'
 
 interface CoachProps {
   data: AccountData
+}
+
+interface MeetingPrepState {
+  loading: boolean
+  briefing: string | null
+  error: string | null
 }
 
 function formatMeetingDate(dateStr: string): string {
@@ -17,6 +23,61 @@ function formatMeetingDate(dateStr: string): string {
   if (diffDays === 0) return `Today at ${time}`
   if (diffDays === 1) return `Tomorrow at ${time}`
   return `${dateFormatted} at ${time} (in ${diffDays}d)`
+}
+
+function renderBriefingMarkdown(text: string) {
+  // Split into lines and render with basic markdown support
+  const lines = text.split('\n')
+  const elements: React.ReactNode[] = []
+  let listBuffer: string[] = []
+
+  const flushList = () => {
+    if (listBuffer.length > 0) {
+      elements.push(
+        <ul key={`list-${elements.length}`} className="list-disc list-inside space-y-1 ml-1">
+          {listBuffer.map((item, i) => (
+            <li key={i} dangerouslySetInnerHTML={{ __html: inlineFormat(item) }} />
+          ))}
+        </ul>
+      )
+      listBuffer = []
+    }
+  }
+
+  const inlineFormat = (s: string) =>
+    s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+     .replace(/\*(.+?)\*/g, '<em>$1</em>')
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const headingMatch = line.match(/^(#{1,4})\s+(.*)/)
+    const listMatch = line.match(/^[-•]\s+(.*)/)
+
+    if (headingMatch) {
+      flushList()
+      const level = headingMatch[1].length
+      const text = headingMatch[2]
+      const cls = level <= 2
+        ? 'text-base font-bold text-text-primary mt-4 mb-1'
+        : 'text-sm font-semibold text-text-primary mt-3 mb-1'
+      elements.push(
+        <div key={i} className={cls} dangerouslySetInnerHTML={{ __html: inlineFormat(text) }} />
+      )
+    } else if (listMatch) {
+      listBuffer.push(listMatch[1])
+    } else {
+      flushList()
+      if (line.trim() === '') {
+        elements.push(<div key={i} className="h-2" />)
+      } else {
+        elements.push(
+          <p key={i} className="text-sm text-text-primary leading-relaxed" dangerouslySetInnerHTML={{ __html: inlineFormat(line) }} />
+        )
+      }
+    }
+  }
+  flushList()
+  return elements
 }
 
 const qbrSteps = [
@@ -58,8 +119,9 @@ const relationshipBadge: Record<string, { bg: string; text: string }> = {
 export default function Coach({ data }: CoachProps) {
   const [briefingVisible, setBriefingVisible] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [meetingPrep, setMeetingPrep] = useState<Record<string, MeetingPrepState>>({})
 
-  const { account, healthScore, upcomingMeetings, integrationStatus } = data
+  const { account, contacts, deals, signals, healthScore, upcomingMeetings, integrationStatus } = data
 
   const handleGenerateBriefing = () => {
     setBriefingVisible(false)
@@ -69,6 +131,70 @@ export default function Coach({ data }: CoachProps) {
       setBriefingVisible(true)
     }, 2000)
   }
+
+  const handleGeneratePrep = useCallback(async (meeting: UpcomingMeeting) => {
+    setMeetingPrep((prev) => ({
+      ...prev,
+      [meeting.id]: { loading: true, briefing: null, error: null },
+    }))
+
+    try {
+      const res = await fetch('/api/coach/meeting-prep', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          meeting: {
+            title: meeting.title,
+            start_time: meeting.start_time,
+            end_time: meeting.end_time,
+            attendees_client: meeting.attendees_client,
+            attendees_campfire: meeting.attendees_campfire,
+          },
+          accountData: {
+            name: account.name,
+            tier: account.tier,
+            objective_retention: account.objective_retention,
+            objective_development: account.objective_development,
+            why_change: account.why_change,
+            why_now: account.why_now,
+            why_us: account.why_us,
+            strengths: account.strengths,
+            vulnerabilities: account.vulnerabilities,
+            client_challenges: account.client_challenges,
+            key_initiatives: account.key_initiatives,
+          },
+          contacts,
+          deals,
+          signals,
+          healthScore: {
+            overall: healthScore.overall,
+            status: healthScore.status,
+            summary: healthScore.summary,
+          },
+        }),
+      })
+
+      const result = await res.json()
+
+      if (!res.ok || result.error) {
+        setMeetingPrep((prev) => ({
+          ...prev,
+          [meeting.id]: { loading: false, briefing: null, error: result.error || 'Failed to generate prep briefing.' },
+        }))
+        return
+      }
+
+      setMeetingPrep((prev) => ({
+        ...prev,
+        [meeting.id]: { loading: false, briefing: result.briefing, error: null },
+      }))
+    } catch {
+      setMeetingPrep((prev) => ({
+        ...prev,
+        [meeting.id]: { loading: false, briefing: null, error: 'Network error — check your connection and try again.' },
+      }))
+    }
+  }, [account, contacts, deals, signals, healthScore])
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -93,8 +219,24 @@ export default function Coach({ data }: CoachProps) {
                     <h3 className="font-semibold text-text-primary">{meeting.title}</h3>
                     <p className="text-sm text-text-secondary font-mono">{formatMeetingDate(meeting.start_time)}</p>
                   </div>
-                  <button className="bg-accent text-white rounded-lg px-3 py-1.5 text-sm hover:bg-blue-600 transition-colors">
-                    Generate Prep
+                  <button
+                    onClick={() => handleGeneratePrep(meeting)}
+                    disabled={meetingPrep[meeting.id]?.loading}
+                    className="bg-accent text-white rounded-lg px-3 py-1.5 text-sm hover:bg-blue-600 disabled:opacity-50 transition-colors flex items-center gap-2"
+                  >
+                    {meetingPrep[meeting.id]?.loading ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Generating...
+                      </>
+                    ) : meetingPrep[meeting.id]?.briefing ? (
+                      'Regenerate Prep'
+                    ) : (
+                      'Generate Prep'
+                    )}
                   </button>
                 </div>
 
@@ -133,7 +275,51 @@ export default function Coach({ data }: CoachProps) {
                   </div>
                 </div>
 
-                {meeting.prep_briefing && (
+                {/* Loading state */}
+                {meetingPrep[meeting.id]?.loading && (
+                  <div className="mt-4 bg-accent-soft border-l-4 border-accent rounded-lg p-4">
+                    <div className="flex items-center gap-3 justify-center text-text-secondary py-4">
+                      <svg className="animate-spin h-5 w-5 text-accent" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                      <span className="text-sm">Analysing attendee intelligence and generating prep briefing...</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Error state with retry */}
+                {meetingPrep[meeting.id]?.error && !meetingPrep[meeting.id]?.loading && (
+                  <div className="mt-4 bg-danger-soft border-l-4 border-danger rounded-lg p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="text-xs font-semibold text-danger mb-1">Briefing Generation Failed</p>
+                        <p className="text-sm text-text-secondary">{meetingPrep[meeting.id].error}</p>
+                      </div>
+                      <button
+                        onClick={() => handleGeneratePrep(meeting)}
+                        className="bg-danger text-white rounded-lg px-3 py-1.5 text-xs hover:opacity-90 transition-colors flex-shrink-0"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Generated briefing */}
+                {meetingPrep[meeting.id]?.briefing && !meetingPrep[meeting.id]?.loading && (
+                  <div className="mt-4 bg-accent-soft border-l-4 border-accent rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-xs font-semibold text-accent">AI Prep Briefing — Connect → Evaluate → Explore → Demonstrate → Commit</p>
+                    </div>
+                    <div className="space-y-1">
+                      {renderBriefingMarkdown(meetingPrep[meeting.id].briefing!)}
+                    </div>
+                  </div>
+                )}
+
+                {/* Fallback: pre-existing static briefing (from Supabase) */}
+                {meeting.prep_briefing && !meetingPrep[meeting.id]?.briefing && !meetingPrep[meeting.id]?.loading && (
                   <div className="mt-4 bg-accent-soft border-l-4 border-accent rounded-lg p-3">
                     <p className="text-xs font-semibold text-accent mb-1">AI Prep Briefing</p>
                     <p className="text-sm text-text-primary">{meeting.prep_briefing}</p>
